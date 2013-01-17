@@ -26,16 +26,28 @@ function showAlert(title, message, level){
     $div.prependTo('body');
 }
 
+function prepareDownload(dataset_box_url, apikey){
+    console.log('Preparing download...')
+}
+
 $(function(){
     readSettings(function(settings){
-        console.log(settings)
+        if('dataset_box_url' in settings && 'apikey' in settings){
+            prepareDownload(settings.dataset_box_url, settings.apikey)
+        } else if('apikey' in settings){
+            showAlert('Which dataset do you want to visualise?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;dataset_box_url&rdquo; key-value pair. Are you sure you followed the right link?', true)
+        } else if('dataset_box_url' in settings){
+            showAlert('What is your ScraperWiki API key?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;apikey&rdquo; key-value pair. Are you sure you followed the right link?', true)
+        } else {
+            showAlert('We need to know more information!', 'You supplied a JSON object in the URL hash, but it contains neither a &ldquo;dataset_box_url&rdquo; nor a &ldquo;apikey&rdquo;. This tool needs both. Are you sure you followed the right link?', true)
+        }
     }, function(error){
         if(error=='window.location.hash not supplied'){
-            showAlert('Which dataset do you want to visualise?', 'You didn&rsquo;t supply a JSON object of settings in the URL hash. Are you sure you followed the right link?');
+            showAlert('Which dataset do you want to visualise?', 'You didn&rsquo;t supply a JSON object of settings in the URL hash. Are you sure you followed the right link?', true)
         } else if(error=='window.location.hash is invalid JSON'){
-            showAlert('Could not read settings from URL hash!', 'The settings supplied in your URL hash are not a valid JSON object. Are you sure you followed the right link?');
+            showAlert('Could not read settings from URL hash!', 'The settings supplied in your URL hash are not a valid JSON object. Are you sure you followed the right link?', true)
         } else {
-            showAlert('Oh noes!', 'Something mysterious went wrong when we tried to load your dataset settings. Are you sure you followed the right link?')
+            showAlert('Oh noes!', 'Something mysterious went wrong when we tried to load your dataset settings. Are you sure you followed the right link?', true)
         }
     })
 })
