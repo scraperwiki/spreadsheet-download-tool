@@ -41,7 +41,11 @@ function prepareDownload(dataset_box_url, view_apikey){
         }).done(function(data){
             // Data should be a JSON list of spreadsheet urls,
             // provided by the completed extraction script
-            deferredObject.resolve(data)
+            if(typeof(data)=='object'){
+                deferredObject.resolve(data)
+            } else {
+                deferredObject.reject('Dataset extraction failed: ' + String(data))
+            }
         }).fail(function(jqXHR, textStatus, errorThrown){
             deferredObject.reject('Ajax call failed: ' + textStatus + ' ' + errorThrown)
         })
@@ -52,7 +56,13 @@ $(function(){
     readSettings(function(settings){
         if('dataset_box_url' in settings && 'view_apikey' in settings){
             prepareDownload(settings.dataset_box_url, settings.apikey).done(function(urls){
-                console.log('deferred done!', urls)
+                $('body').append('<p>Your spreadsheet is ready!</p>')
+                $ul = $('<ul>')
+                $.each(data, function(i, file){
+                    $ul.append('<li><a href="' + file + '">' + file + '</a></li>')
+                    $('<iframe>').attr('src', file).hide().appendTo('body');
+                })
+                $ul.appendTo('body')
             }).fail(function(error){
                 showAlert('Something went wrong', 'Your download could not be prepared. The following error was generated when we tried: &ldquo;' + error + '&rdquo;')
             })
