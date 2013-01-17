@@ -2,3 +2,12 @@ body {
   background: transparent;
   padding: 20px;
 }
+
+.loading {
+    margin-top: 100px;
+    padding-top: 50px;
+    text-align: center;
+    background: transparent url('../img/tool-loader.gif') center top no-repeat;
+    color: #666;
+    font-size: 20px;
+}
