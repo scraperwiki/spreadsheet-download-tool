@@ -26,25 +26,42 @@ function showAlert(title, message, level){
     $div.prependTo('body');
 }
 
-function prepareDownload(dataset_box_url, apikey){
+function prepareDownload(dataset_box_url, view_apikey){
+    // This returns a jQuery deferred object, so you can chain
+    // .done(), .fail() and .always() methods onto it.
     return $.Deferred(function(deferredObject) {
-        console.log('deferred started')
-        setTimeout(deferredObject.resolve, 1000);
+        // Call this box's exec endpoint, to execute the (Python) extraction script
+        $.ajax({
+            url: '../exec',
+            type: 'POST',
+            data: {
+                apikey: view_apikey,
+                cmd: 'cd;./extract.py ' + dataset_box_url
+            }
+        }).done(function(data){
+            // Data should be a JSON list of spreadsheet urls,
+            // provided by the completed extraction script
+            deferredObject.resolve(data)
+        }).fail(function(jqXHR, textStatus, errorThrown){
+            deferredObject.reject('Ajax call failed: ' + textStatus + ' ' + errorThrown)
+        })
     })
 }
 
 $(function(){
     readSettings(function(settings){
-        if('dataset_box_url' in settings && 'apikey' in settings){
-            prepareDownload(settings.dataset_box_url, settings.apikey).done(function(){
-                console.log('deferred done!')
+        if('dataset_box_url' in settings && 'view_apikey' in settings){
+            prepareDownload(settings.dataset_box_url, settings.apikey).done(function(urls){
+                console.log('deferred done!', urls)
+            }).fail(function(error){
+                showAlert('Something went wrong', 'Your download could not be prepared. The following error was generated when we tried: &ldquo;' + error + '&rdquo;')
             })
-        } else if('apikey' in settings){
+        } else if('view_apikey' in settings){
             showAlert('Which dataset do you want to visualise?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;dataset_box_url&rdquo; key-value pair. Are you sure you followed the right link?', true)
         } else if('dataset_box_url' in settings){
-            showAlert('What is your ScraperWiki API key?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;apikey&rdquo; key-value pair. Are you sure you followed the right link?', true)
+            showAlert('What is your ScraperWiki API key?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;view_apikey&rdquo; key-value pair. Are you sure you followed the right link?', true)
         } else {
-            showAlert('We need to know more information!', 'You supplied a JSON object in the URL hash, but it contains neither a &ldquo;dataset_box_url&rdquo; nor a &ldquo;apikey&rdquo;. This tool needs both. Are you sure you followed the right link?', true)
+            showAlert('We need to know more information!', 'You supplied a JSON object in the URL hash, but it contains neither a &ldquo;dataset_box_url&rdquo; nor a &ldquo;view_apikey&rdquo;. This tool needs both. Are you sure you followed the right link?', true)
         }
     }, function(error){
         if(error=='window.location.hash not supplied'){
