@@ -27,13 +27,18 @@ function showAlert(title, message, level){
 }
 
 function prepareDownload(dataset_box_url, apikey){
-    console.log('Preparing download...')
+    return $.Deferred(function(deferredObject) {
+        console.log('deferred started')
+        setTimeout(deferredObject.resolve, 1000);
+    })
 }
 
 $(function(){
     readSettings(function(settings){
         if('dataset_box_url' in settings && 'apikey' in settings){
-            prepareDownload(settings.dataset_box_url, settings.apikey)
+            prepareDownload(settings.dataset_box_url, settings.apikey).done(function(){
+                console.log('deferred done!')
+            })
         } else if('apikey' in settings){
             showAlert('Which dataset do you want to visualise?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;dataset_box_url&rdquo; key-value pair. Are you sure you followed the right link?', true)
         } else if('dataset_box_url' in settings){
