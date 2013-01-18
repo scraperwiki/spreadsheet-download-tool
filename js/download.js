@@ -35,6 +35,7 @@ function prepareDownload(dataset_box_url, view_apikey){
         $.ajax({
             url: '/' + thisBoxName + '/exec',
             type: 'POST',
+            dataType: 'json',
             data: {
                 apikey: view_apikey,
                 cmd: 'cd;./spreadsheet-download-tool/extract.py ' + dataset_box_url
