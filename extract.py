@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import requests
+import requests # requires Python requests 1.x
 import optparse
 from openpyxl.workbook import Workbook
 from openpyxl.writer.excel import ExcelWriter
@@ -22,7 +22,7 @@ def extract():
     if len(args):
         dataset_box_url = args[0]
         r = sqlite(dataset_box_url, 'select name from sqlite_master where type="table"')
-        tables = [ x['name'] for x in r.json ]
+        tables = [ x['name'] for x in r.json() ]
 
         wb = Workbook()
         wb.remove_sheet(wb.get_active_sheet())
@@ -31,7 +31,7 @@ def extract():
             if debug: print table
             ws = wb.create_sheet(title=table)
             r2 = sqlite(dataset_box_url, 'select * from [%s]' % table)
-            data = r2.json
+            data = r2.json()
             ws.append(data[0].keys())
             for row in data:
                 ws.append(row.values())
