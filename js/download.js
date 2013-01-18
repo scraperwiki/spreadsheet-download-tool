@@ -60,7 +60,7 @@ $(function(){
         if('dataset_box_url' in settings && 'view_apikey' in settings){
             prepareDownload(settings.dataset_box_url, settings.view_apikey).done(function(urls){
                 $('p.loading').remove()
-                $success = ('<div class="container">')
+                $success = $('<div class="container">')
                 // This won't work when urls list contains more than one file (see upcoming card!!)
                 $success.append('<p class="lead">Your spreadsheet is downloading!</p>')
                 $success.append('<p class="alternative">Alernatively, copy and paste this link to share the spreadsheet with other people:</p>')
