@@ -69,8 +69,8 @@ $(function(){
                     $(this).select()
                   }).on('mouseup', function(e){
                     e.preventDefault() // a fix for webkit not letting you .select() text in an input
-                  }).val(view_url + '/http' + file).appendTo($success)
-                  $('<iframe>').attr('src', view_url + '/http' + file).hide().appendTo('body');
+                  }).val(view_url + '/http/' + file).appendTo($success)
+                  $('<iframe>').attr('src', view_url + '/http/' + file).hide().appendTo('body');
                 })
                 $success.appendTo('body')
             }).fail(function(error){
