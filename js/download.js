@@ -56,7 +56,7 @@ function prepareDownload(dataset_box_url, view_apikey){
 $(function(){
     readSettings(function(settings){
         if('dataset_box_url' in settings && 'view_apikey' in settings){
-            prepareDownload(settings.dataset_box_url, settings.apikey).done(function(urls){
+            prepareDownload(settings.dataset_box_url, settings.view_apikey).done(function(urls){
                 $('body').append('<p>Your spreadsheet is ready!</p>')
                 $ul = $('<ul>')
                 $.each(data, function(i, file){
