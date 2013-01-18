@@ -30,12 +30,11 @@ def extract():
         for table in tables:
             if debug: print table
             ws = wb.create_sheet(title=table)
-            r = sqlite(dataset_box_url, 'select * from [%s]' % table)
-            data = r.json
+            r2 = sqlite(dataset_box_url, 'select * from [%s]' % table)
+            data = r2.json
             ws.append(data[0].keys())
             for row in data:
                 ws.append(row.values())
-            ws.cell(row=1, column=1).value = table
 
         wb.save(filename='http/spreadsheet.xlsx')
         if not debug:
