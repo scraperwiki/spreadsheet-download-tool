@@ -11,3 +11,12 @@ body {
     color: #666;
     font-size: 20px;
 }
+
+.container {
+    width: 50em;
+    text-align: center;
+}
+
+input {
+  width: 43em;
+}
