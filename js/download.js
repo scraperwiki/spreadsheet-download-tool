@@ -31,8 +31,9 @@ function prepareDownload(dataset_box_url, view_apikey){
     // .done(), .fail() and .always() methods onto it.
     return $.Deferred(function(deferredObject) {
         // Call this box's exec endpoint, to execute the (Python) extraction script
+        var thisBoxName = window.location.pathname.split('/')[1]
         $.ajax({
-            url: '../exec',
+            url: '/' + thisBoxName + '/exec',
             type: 'POST',
             data: {
                 apikey: view_apikey,
