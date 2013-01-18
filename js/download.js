@@ -64,12 +64,13 @@ $(function(){
                 // This will need rewording when urls list contains more than one file (see upcoming card!!)
                 $success.append('<p class="lead">Your spreadsheet is downloading!</p>')
                 $success.append('<p class="alternative">Alernatively, copy and paste this link to share the spreadsheet with other people:</p>')
-                $.each(files, function(i,file){
+                $.each(urls, function(i,file){
                   $('<input>').attr('type', 'text').on('focus', function(){
                     $(this).select()
                   }).on('mouseup', function(e){
                     e.preventDefault() // a fix for webkit not letting you .select() text in an input
                   }).val(view_url + '/http' + file).appendTo($success)
+                  $('<iframe>').attr('src', view_url + '/http' + file).hide().appendTo('body');
                 })
                 $success.appendTo('body')
             }).fail(function(error){
