@@ -58,9 +58,9 @@ $(function(){
     readSettings(function(settings){
         if('dataset_box_url' in settings && 'view_apikey' in settings){
             prepareDownload(settings.dataset_box_url, settings.view_apikey).done(function(urls){
-                $('body').append('<p>Your spreadsheet is ready!</p>')
+                $('body').append('<p>Your spreadsheet is ready!</p>').find('p.loading').remove()
                 $ul = $('<ul>')
-                $.each(data, function(i, file){
+                $.each(urls, function(i, file){
                     $ul.append('<li><a href="' + file + '">' + file + '</a></li>')
                     $('<iframe>').attr('src', file).hide().appendTo('body');
                 })
