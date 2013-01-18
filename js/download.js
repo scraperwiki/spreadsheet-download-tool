@@ -3,13 +3,13 @@ function readSettings(success, error){
     // It calls a success callback with a settings object from the window hash if present,
     // or calls an error callback with an error message if something goes wrong.
     if(window.location.hash == ''){
-        return error('window.location.hash not supplied')
+        return error('URL #fragment not supplied')
     }
     hash = window.location.hash.substr(1);
     try {
         settings = JSON.parse(decodeURIComponent(hash));
     } catch(e) {
-        return error('window.location.hash is invalid JSON')
+        return error('URL #fragment is invalid JSON')
     }
     return success(settings)
 }
@@ -67,17 +67,17 @@ $(function(){
                 showAlert('Something went wrong', 'Your download could not be prepared. The following error was generated when we tried: &ldquo;' + error + '&rdquo;')
             })
         } else if('view_apikey' in settings){
-            showAlert('Which dataset do you want to visualise?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;dataset_box_url&rdquo; key-value pair. Are you sure you followed the right link?', true)
+            showAlert('Which dataset do you want to visualise?', 'You supplied a JSON object in the URL #fragment, but it doesn&rsquo;t contain a &ldquo;dataset_box_url&rdquo; key-value pair. Are you sure you followed the right link?', true)
         } else if('dataset_box_url' in settings){
-            showAlert('What is your ScraperWiki API key?', 'You supplied a JSON object in the URL hash, but it doesn&rsquo;t contain a &ldquo;view_apikey&rdquo; key-value pair. Are you sure you followed the right link?', true)
+            showAlert('What is your ScraperWiki API key?', 'You supplied a JSON object in the URL #fragment, but it doesn&rsquo;t contain a &ldquo;view_apikey&rdquo; key-value pair. Are you sure you followed the right link?', true)
         } else {
-            showAlert('We need to know more information!', 'You supplied a JSON object in the URL hash, but it contains neither a &ldquo;dataset_box_url&rdquo; nor a &ldquo;view_apikey&rdquo;. This tool needs both. Are you sure you followed the right link?', true)
+            showAlert('We need to know more information!', 'You supplied a JSON object in the URL #fragment, but it contains neither a &ldquo;dataset_box_url&rdquo; nor a &ldquo;view_apikey&rdquo;. This tool needs both. Are you sure you followed the right link?', true)
         }
     }, function(error){
-        if(error=='window.location.hash not supplied'){
-            showAlert('Which dataset do you want to visualise?', 'You didn&rsquo;t supply a JSON object of settings in the URL hash. Are you sure you followed the right link?', true)
-        } else if(error=='window.location.hash is invalid JSON'){
-            showAlert('Could not read settings from URL hash!', 'The settings supplied in your URL hash are not a valid JSON object. Are you sure you followed the right link?', true)
+        if(error=='URL #fragment not supplied'){
+            showAlert('Which dataset do you want to visualise?', 'You didn&rsquo;t supply a JSON object of settings in the URL #fragment. Are you sure you followed the right link?', true)
+        } else if(error=='URL #fragment is invalid JSON'){
+            showAlert('Could not read settings from URL #fragment!', 'The settings supplied in your URL #fragment are not a valid JSON object. Are you sure you followed the right link?', true)
         } else {
             showAlert('Oh noes!', 'Something mysterious went wrong when we tried to load your dataset settings. Are you sure you followed the right link?', true)
         }
