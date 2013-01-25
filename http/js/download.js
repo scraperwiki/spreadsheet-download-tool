@@ -38,7 +38,7 @@ function prepareDownload(dataset_box_url, view_apikey){
             dataType: 'json',
             data: {
                 apikey: view_apikey,
-                cmd: 'cd;./spreadsheet-download-tool/extract.py ' + dataset_box_url
+                cmd: 'cd; ./tool/extract.py ' + dataset_box_url
             }
         }).done(function(data){
             // Data should be a JSON list of spreadsheet urls,
