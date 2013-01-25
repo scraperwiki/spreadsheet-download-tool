@@ -20,3 +20,12 @@ body {
 input {
   width: 43em;
 }
+
+.choice {
+  margin-top: 100px;
+  text-align: center;
+}
+
+.choice a {
+  margin: 0 10px;
+}
