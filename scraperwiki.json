@@ -1,5 +1,4 @@
 {
   "displayName": "Download as spreadsheet",
-  "gitUrl": "git://github.com/scraperwiki/spreadsheet-download-tool.git",
   "description": "Download your dataset as an Excel file"
 }
