@@ -6,6 +6,7 @@ from openpyxl.workbook import Workbook
 from openpyxl.writer.excel import ExcelWriter
 import unicodecsv
 import json
+import collections
 
 debug = False
 
@@ -27,7 +28,8 @@ def extract(dataset_box_url):
     table_names = [ x for x in meta['table'] ]
     for table_name in table_names:
         r2 = sqlite(dataset_box_url, 'select * from [%s]' % table_name)
-        sheets[table_name] = r2.json()
+        r2_dict = json.loads(r2.content, object_pairs_hook=collections.OrderedDict)
+        sheets[table_name] = r2_dict
     return sheets
 
 def save(type, sheets):
