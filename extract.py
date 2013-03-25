@@ -15,12 +15,16 @@ Example: ./extract.py xlsx http://box.scraperwiki.com/mybox/publish_token"""
 
 def sqlite(dataset_box_url, q):
     if debug: print 'GET %s/sqlite?q=%s' % (dataset_box_url, q)
-    return requests.get(dataset_box_url + '/sqlite', params={'q': q})
+    return requests.get(dataset_box_url + '/sql', params={'q': q})
+
+def sqlite_meta(dataset_box_url):
+    if debug: print 'GET %s/sqlite/meta' % (dataset_box_url)
+    return requests.get(dataset_box_url + '/sql/meta')
 
 def extract(dataset_box_url):
     sheets = {}
-    r = sqlite(dataset_box_url, 'select name from sqlite_master where type="table"')
-    table_names = [ x['name'] for x in r.json() ]
+    meta = sqlite_meta(dataset_box_url).json()
+    table_names = [ x for x in meta['table'] ]
     for table_name in table_names:
         r2 = sqlite(dataset_box_url, 'select * from [%s]' % table_name)
         sheets[table_name] = r2.json()
