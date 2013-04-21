@@ -8,50 +8,49 @@ from openpyxl.writer.excel import ExcelWriter
 import unicodecsv
 import json
 import collections
+import scraperwiki
+import datetime
 
-DEBUG = False # prints debug messages to stdout during run
+DEBUG = True # prints debug messages to stdout during run
 
 MAX_ROWS = 5000 # how many rows to request from the SQL API at any one time
 
-USAGE = """Convert data from a ScraperWiki box into a CSV or Excel spreadsheet.
-Takes two arguments: format (csv or xlsx) and the full URL of the target box.
-Example: ./extract.py --type xlsx http://box.scraperwiki.com/boxName/publishToken"""
+USAGE = """Convert data from a ScraperWiki box into CSVs and Excel spreadsheets.
+Takes one argument: the full URL of the target box, including publishToken.
+Example: ./extract.py http://box.scraperwiki.com/boxName/publishToken"""
 
 def main():
     parser = optparse.OptionParser(usage=USAGE)
-    parser.add_option("-t", "--type", type="choice", choices=['csv', 'xlsx'], help="Desired file format (csv or xlsx)")
     (options, args) = parser.parse_args()
     try:
         box_url = args[0]
     except IndexError:
         parser.error("No box url specified")
 
-    # a dict of lists, like so:
-    # { tableOne: [ col1, col2 ], tableTwo: […, …] }
     tables_and_columns = get_tables_and_columns(box_url)
     log(tables_and_columns)
 
-    if options.type == 'csv':
-        filenames = []
-        for table_name, column_names in tables_and_columns.items():
-            filename = 'http/%s.csv' % table_name
-            with open(filename, 'wb') as f:
-                writer = unicodecsv.DictWriter(f, column_names)
-                writer.writeheader()
-                for chunk_of_rows in get_rows(box_url, table_name):
-                    writer.writerows(chunk_of_rows)
-            filenames.append(filename)
-    else:
-        wb = Workbook(optimized_write = True)
-        for table_name, column_names in tables_and_columns.items():
-            ws = wb.create_sheet(title=table_name)
-            ws.append(column_names)
+    # This might look a bit complicated, because we're creating
+    # a multi-sheet XLSX and a bunch of CSV files at the same time.
+    # But it's more efficient than two separate loops.
+    # We save state into the database, for the GUI to read.
+    excel_workbook = Workbook(optimized_write = True)
+    save_state('all_tables.xlsx', 'creating')
+    for table_name, column_names in tables_and_columns.items():
+        csv_filename = "http/%s.csv" % table_name
+        save_state("%s.csv" % table_name, 'creating')
+        with open(csv_filename, 'wb') as f:
+            excel_worksheet = excel_workbook.create_sheet(title=table_name)
+            excel_worksheet.append(column_names)
+            csv_writer = unicodecsv.DictWriter(f, column_names)
+            csv_writer.writeheader()
             for chunk_of_rows in get_rows(box_url, table_name):
+                csv_writer.writerows(chunk_of_rows)
                 for row in chunk_of_rows:
-                    ws.append(row.values())
-        wb.save(filename='http/spreadsheet.xlsx')
-        filenames = ['http/spreadsheet.xlsx']
-    print json.dumps(filenames)
+                    excel_worksheet.append(row.values())
+        save_state("%s.csv" % table_name, 'completed')
+    excel_workbook.save(filename='http/all_tables.xlsx')
+    save_state('all_tables.xlsx', 'completed')
 
 def log(string):
     if DEBUG: print string
@@ -89,6 +88,16 @@ def get_rows(box_url, table_name):
             break
         yield rows
         start += MAX_ROWS
+
+def save_state(filename, state):
+    log("%s %s" % (filename, state))
+    if state == 'creating':
+        scraperwiki.sql.save(['filename'], {'filename': filename, "created": None}, '_state')
+    elif state == 'completed':
+        now = datetime.datetime.now().replace(microsecond=0).isoformat()
+        scraperwiki.sql.save(['filename'], {'filename': filename, "created": now}, '_state')
+    else:
+        raise Exception("Unknown status: %s" % status)
 
 try:
     main()
