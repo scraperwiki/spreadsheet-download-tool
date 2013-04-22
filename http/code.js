@@ -72,17 +72,23 @@ function trackProgress(){
     showFiles(files)
     showControls(files)
   }).fail(function(x, y, z){
-    scraperwiki.alert('Error contacting ScraperWiki API', x.responseText, 1)
+    if(x.responseText.match(/database file does not exist/) != null){
+      regenerate()
+    } else {
+      scraperwiki.alert('Error contacting ScraperWiki API', x.responseText, 1)
+    }
+  })
+}
+
+function regenerate(){
+  scraperwiki.exec('echo "started"; tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &', function(data){
+    poll = setInterval(trackProgress, 2000)
   })
 }
 
 $(function(){
 
-  $(document).on('click', '#regenerate', function(e){
-    scraperwiki.exec('echo "started"; tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &', function(data){
-      poll = setInterval(trackProgress, 2000)
-    })
-  })
+  $(document).on('click', '#regenerate', regenerate)
 
   trackProgress()
 

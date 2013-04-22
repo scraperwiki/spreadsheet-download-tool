@@ -27,6 +27,9 @@ def main():
     except IndexError:
         parser.error("No box url specified")
 
+    scraperwiki.sql.execute('CREATE TABLE IF NOT EXISTS "_state" ("filename" UNIQUE, "created")')
+    scraperwiki.sql.commit()
+
     tables_and_columns = get_tables_and_columns(box_url)
     log(tables_and_columns)
 
