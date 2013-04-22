@@ -99,9 +99,7 @@ function trackProgress(){
 }
 
 function regenerate(){
-  scraperwiki.exec('echo "started"; tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &', function(data){
-    poll = setInterval(trackProgress, 2000)
-  })
+  scraperwiki.exec('echo "started"; tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &')
 }
 
 $(function(){
@@ -109,5 +107,6 @@ $(function(){
   $(document).on('click', '#regenerate', regenerate)
 
   trackProgress()
+  poll = setInterval(trackProgress, 2000)
 
 })
