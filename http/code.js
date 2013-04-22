@@ -39,23 +39,41 @@ function localSql(sql, success, error) {
 }
 
 function showFiles(files){
-  // files should be a list of objects, containing filenames and dates:
-  // [ {filename: 'test.csv', created: 'YYYY-MM-DDTHH:MM:SS'}, {…}, … ]
-  var $ul = $('ul.nav').empty()
+  // files should be a list of objects, containing rowids, filenames and ages:
+  // [ {rowid: 2, filename: 'test.csv', age: 3600}, {…}, … ]
+  var $ul = $('ul.nav')
+  $('li', $ul).each(function(){
+    var li = $(this)
+    var id = li.attr('id')
+    var found = false
+    $.each(files, function(i, file){
+      if('file_' + file.rowid == id){
+        found = true
+      }
+    })
+    if(!found){
+      li.remove()
+    }
+  })
   $.each(files, function(i, file){
-    console.log(file.filename, file.age)
-    var href = ' href="'+ file.filename +'"'
-    var time = humanOldness(file.age)
-    if(file.filename.endsWith('csv')){
-      var icon = 'csv.png'
+    var elementId = '#file_' + file.rowid
+    var loading = (file.age == '' || file.age == null)
+    var needToCreate = !($(elementId).length)
+    var icon = file.filename.endsWith('csv') ? 'csv.png' : 'xlsx.png'
+
+    if(needToCreate) {
+      $ul.append('<li id="file_'+ file.rowid +'"><a><img src="'+ icon +'" width="16" height="16"> '+ file.filename +' <span class="muted pull-right"></span></a></li>')
+    }
+
+    if(loading){
+      var timeOrLoading = 'Creating <img src="loading.gif" width="16" height="16" />'
+      $(elementId + ' a').addClass('loading').removeAttr('href')
     } else {
-      var icon = 'xlsx.png'
+      var timeOrLoading = humanOldness(file.age)
+      $(elementId + ' a').removeClass('loading').attr('href', file.filename)
     }
-    if(file.age == '' || file.age == null){
-      var time = 'Creating <img src="loading.gif" width="16" height="16" />'
-      var href = ' class="loading"'
-    }
-    $ul.append('<li><a'+ href +'><img src="'+ icon +'" width="16" height="16"> '+ file.filename +' <span class="muted pull-right">'+ time +'</span></a></li>')
+
+    $(elementId + ' span.muted').html(timeOrLoading)  // update the time
   })
 }
 
@@ -68,7 +86,7 @@ function showControls(files){
 }
 
 function trackProgress(){
-  localSql('SELECT filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
+  localSql('SELECT rowid, filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
     showFiles(files)
     showControls(files)
   }).fail(function(x, y, z){
