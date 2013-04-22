@@ -77,18 +77,9 @@ function showFiles(files){
   })
 }
 
-function showControls(files){
-  if(files.length == 0){
-    $('p.controls').addClass('text-center').html('<img src="loading.gif" width="16" height="16" /> Creating your downloads&hellip;')
-  } else {
-    $('p.controls').removeClass('text-center').html('<button class="btn btn-small pull-right" id="regenerate">Regenerate all files</button>')
-  }
-}
-
 function trackProgress(){
   localSql('SELECT rowid, filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
     showFiles(files)
-    showControls(files)
   }).fail(function(x, y, z){
     if(x.responseText.match(/database file does not exist/) != null){
       regenerate()
