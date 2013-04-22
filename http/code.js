@@ -19,6 +19,22 @@ function prettyDate(time){
 		day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks old"
 }
 
+function humanOldness(diff){
+  // diff should be a value in seconds
+	var	day_diff = Math.floor(diff / 86400)
+	if ( isNaN(day_diff) || day_diff < 0 || day_diff >= 31 )
+		return
+	return day_diff == 0 && (
+			diff < 60 && "brand new" ||
+			diff < 120 && "1 minute old" ||
+			diff < 3600 && Math.floor( diff / 60 ) + " minutes old" ||
+			diff < 7200 && "1 hour old" ||
+			diff < 86400 && Math.floor( diff / 3600 ) + " hours old") ||
+		day_diff == 1 && "1 day old" ||
+		day_diff < 7 && day_diff + " days old" ||
+		day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks old"
+}
+
 // http://stackoverflow.com/questions/280634
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1
@@ -48,14 +64,15 @@ function showFiles(files){
   // [ {filename: 'test.csv', created: 'YYYY-MM-DDTHH:MM:SS'}, {…}, … ]
   var $ul = $('ul.nav').empty()
   $.each(files, function(i, file){
+    console.log(file.filename, file.age)
     var href = ' href="'+ file.filename +'"'
-    var time = prettyDate(file.created)
+    var time = humanOldness(file.age)
     if(file.filename.endsWith('csv')){
       var icon = 'csv.png'
     } else {
       var icon = 'xlsx.png'
     }
-    if(file.created == '' || file.created == null){
+    if(file.age == '' || file.age == null){
       var time = 'Creating <img src="loading.gif" width="16" height="16" />'
       var href = ' class="loading"'
     }
