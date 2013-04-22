@@ -66,14 +66,17 @@ function showFiles(files){
     }
 
     if(loading){
-      var timeOrLoading = 'Creating <img src="loading.gif" width="16" height="16" />'
+      var timeOrLoading = 'Creating <img src="loading.gif" width="16" height="16">'
       $(elementId + ' a').addClass('loading').removeAttr('href')
     } else {
       var timeOrLoading = humanOldness(file.age)
       $(elementId + ' a').removeClass('loading').attr('href', file.filename)
     }
 
-    $(elementId + ' span.muted').html(timeOrLoading)  // update the time
+    if($(elementId + ' span.muted').html() != timeOrLoading){
+      console.log($(elementId + ' span.muted').html(), timeOrLoading)
+      $(elementId + ' span.muted').html(timeOrLoading)  // update the time
+    }
   })
 }
 
