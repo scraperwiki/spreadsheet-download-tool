@@ -65,23 +65,29 @@ function showFiles(files){
 
 function showControls(files){
   if(files.length == 0){
-    $('p.controls').append('<img src="loading.gif" width="16" height="16" /> Creating your downloads&hellip;')
+    $('p.controls').addClass('text-center').html('<img src="loading.gif" width="16" height="16" /> Creating your downloads&hellip;')
   } else {
-    $('p.controls').append('<button class="btn btn-small pull-right" id="regenerate">Regenerate all files</button>')
+    $('p.controls').removeClass('text-center').html('<button class="btn btn-small pull-right" id="regenerate">Regenerate all files</button>')
   }
 }
 
-$(function(){
-
-  $(document).on('click', '#regenerate', function(e){
-    console.log('regenerate files here!')
-  })
-
-  localSql('SELECT * FROM "_state" ORDER BY "filename" ASC').done(function(files){
+function trackProgress(){
+  localSql('SELECT filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
     showFiles(files)
     showControls(files)
   }).fail(function(x, y, z){
     scraperwiki.alert('Error contacting ScraperWiki API', x.responseText, 1)
   })
+}
+
+$(function(){
+
+  $(document).on('click', '#regenerate', function(e){
+    scraperwiki.exec('echo "started"; tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &', function(data){
+      poll = setInterval(trackProgress, 2000)
+    })
+  })
+
+  trackProgress()
 
 })
