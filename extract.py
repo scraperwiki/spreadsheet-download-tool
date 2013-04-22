@@ -43,7 +43,10 @@ def main():
         csv_filename = "http/%s.csv" % table_name
         save_state("%s.csv" % table_name, 'creating')
         with open(csv_filename, 'wb') as f:
+            # NOTE: create_sheet(title=foo) doesn't appear to name the sheet in
+            # openpyxl version 1.5.7, hence manually setting title afterwards.
             excel_worksheet = excel_workbook.create_sheet(title=table_name)
+            excel_worksheet.title = table_name
             excel_worksheet.append(column_names)
             csv_writer = unicodecsv.DictWriter(f, column_names)
             csv_writer.writeheader()
