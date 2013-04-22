@@ -1,24 +1,3 @@
-// Takes an ISO time and returns a string representing how
-// long ago the date represents.
-function prettyDate(time){
-	var date = new Date((time || "").replace(/-/g,"/").replace(/T/g," ")),
-		diff = (((new Date()).getTime() - date.getTime()) / 1000),
-		day_diff = Math.floor(diff / 86400)
-			
-	if ( isNaN(day_diff) || day_diff < 0 || day_diff >= 31 )
-		return
-			
-	return day_diff == 0 && (
-			diff < 60 && "brand new" ||
-			diff < 120 && "1 minute old" ||
-			diff < 3600 && Math.floor( diff / 60 ) + " minutes old" ||
-			diff < 7200 && "1 hour old" ||
-			diff < 86400 && Math.floor( diff / 3600 ) + " hours old") ||
-		day_diff == 1 && "1 day old" ||
-		day_diff < 7 && day_diff + " days old" ||
-		day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks old"
-}
-
 function humanOldness(diff){
   // diff should be a value in seconds
 	var	day_diff = Math.floor(diff / 86400)
