@@ -87,7 +87,8 @@ function trackProgress(){
     if(x.responseText.match(/database file does not exist/) != null){
       regenerate()
     } else {
-      scraperwiki.alert('Error contacting ScraperWiki API', x.responseText, 1)
+      $(".alert").remove()
+      scraperwiki.alert('Error contacting ScraperWiki API, please check you are online.', x.responseText, 1)
     }
   })
 }
