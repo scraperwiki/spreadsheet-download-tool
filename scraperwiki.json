@@ -1,4 +1,6 @@
 {
   "displayName": "Download as spreadsheet",
-  "description": "An Excel or CSV file"
+  "description": "An Excel or CSV file",
+  "icon": "https://s3-eu-west-1.amazonaws.com/sw-icons/tool-icon-spreadsheet-upload.png",
+  "color": "#029745"
 }
