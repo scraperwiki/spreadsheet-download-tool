@@ -94,7 +94,7 @@ function trackProgress(){
 }
 
 function regenerate(){
-  scraperwiki.exec('echo "started"; tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &')
+  scraperwiki.exec('echo "started"; run-one tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &')
 }
 
 $(function(){
