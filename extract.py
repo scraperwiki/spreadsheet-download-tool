@@ -43,7 +43,7 @@ def main():
     excel_workbook = Workbook(optimized_write = True)
     save_state('all_tables.xlsx', 'creating')
     for table_name, column_names in tables_and_columns.items():
-        (_, csv_tempfile) = mkstemp(suffix='_download_tool.csv', dir='http')
+        csv_tempfile = make_temp_file('.csv')
         save_state("%s.csv" % table_name, 'creating')
         with open(csv_tempfile, 'wb') as f:
             # NOTE: create_sheet(title=foo) doesn't appear to name the sheet in
@@ -60,10 +60,16 @@ def main():
         replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
         save_state("%s.csv" % table_name, 'completed')
 
-    (_, xlsx_tempfile) = mkstemp(suffix='_download_tool.xlsx', dir='http')
+    xlsx_tempfile = make_temp_file('.xlsx')
     excel_workbook.save(filename=xlsx_tempfile)
     replace_tempfile(xlsx_tempfile, 'http/all_tables.xlsx')
     save_state('all_tables.xlsx', 'completed')
+
+
+def make_temp_file(suffix):
+    (_, filename) = mkstemp(suffix=suffix, dir='http')
+    os.chmod(filename, 0644)  # world-readable
+    return filename
 
 
 def replace_tempfile(tmp, destination):
