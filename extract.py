@@ -10,6 +10,9 @@ import json
 import collections
 import scraperwiki
 import datetime
+from tempfile import mkstemp
+import os
+
 
 DEBUG = True # prints debug messages to stdout during run
 
@@ -40,9 +43,9 @@ def main():
     excel_workbook = Workbook(optimized_write = True)
     save_state('all_tables.xlsx', 'creating')
     for table_name, column_names in tables_and_columns.items():
-        csv_filename = "http/%s.csv" % table_name
+        (_, csv_tempfile) = mkstemp(suffix='_download_tool.csv', dir='http')
         save_state("%s.csv" % table_name, 'creating')
-        with open(csv_filename, 'wb') as f:
+        with open(csv_tempfile, 'wb') as f:
             # NOTE: create_sheet(title=foo) doesn't appear to name the sheet in
             # openpyxl version 1.5.7, hence manually setting title afterwards.
             excel_worksheet = excel_workbook.create_sheet(title=table_name)
@@ -54,9 +57,18 @@ def main():
                 csv_writer.writerows(chunk_of_rows)
                 for row in chunk_of_rows:
                     excel_worksheet.append(row.values())
+        replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
         save_state("%s.csv" % table_name, 'completed')
-    excel_workbook.save(filename='http/all_tables.xlsx')
+
+    (_, xlsx_tempfile) = mkstemp(suffix='_download_tool.xlsx', dir='http')
+    excel_workbook.save(filename=xlsx_tempfile)
+    replace_tempfile(xlsx_tempfile, 'http/all_tables.xlsx')
     save_state('all_tables.xlsx', 'completed')
+
+
+def replace_tempfile(tmp, destination):
+    os.rename(tmp, destination)
+
 
 def log(string):
     if DEBUG: print string
