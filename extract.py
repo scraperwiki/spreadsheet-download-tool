@@ -12,23 +12,25 @@ import scraperwiki
 import datetime
 from tempfile import mkstemp
 import os
-
+import sys
+from os.path import join, abspath, dirname
 
 DEBUG = True # prints debug messages to stdout during run
 
 MAX_ROWS = 5000 # how many rows to request from the SQL API at any one time
 
 USAGE = """Convert data from a ScraperWiki box into CSVs and Excel spreadsheets.
-Takes one argument: the full URL of the target box, including publishToken.
-Example: ./extract.py http://box.scraperwiki.com/boxName/publishToken"""
-
+Reads from a file in the home directory containing  the full URL of the target box,
+including publishToken, ie http://box.scraperwiki.com/boxName/publishToken"""
 def main():
-    parser = optparse.OptionParser(usage=USAGE)
-    (options, args) = parser.parse_args()
     try:
-        box_url = args[0]
-    except IndexError:
-        parser.error("No box url specified")
+        filename = abspath(join(dirname(__file__), '..', 'dataset_url.txt'))
+        with open(filename, 'r') as f:
+            box_url = f.read().strip()
+    except IOError:
+        print("ERROR: No dataset URL in {}, try hitting regenerate.\n".format(filename))
+        print(USAGE)
+        sys.exit(1)
 
     scraperwiki.sql.execute('CREATE TABLE IF NOT EXISTS "_state" ("filename" UNIQUE, "created")')
     scraperwiki.sql.commit()

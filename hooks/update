@@ -1,0 +1,9 @@
+#!/bin/bash
+
+date > ~/hook_update.log
+
+URL=$(cat ~/dataset_url.txt)
+if [ "${URL}" != "" ]; then
+    run-one ~/tool/extract.py
+fi
+
