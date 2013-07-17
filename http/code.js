@@ -94,7 +94,9 @@ function trackProgress(){
 }
 
 function regenerate(){
-  scraperwiki.exec('echo "started"; run-one tool/extract.py ' + scraperwiki.readSettings().target.url + ' &> log.txt &')
+
+  scraperwiki.exec('echo "' + scraperwiki.readSettings().target.url + '" > ~/dataset_url.txt; ' + 
+                   'echo "started"; run-one tool/extract.py &> log.txt &')
   $('#regenerate').attr('disabled', true)
 }
 
