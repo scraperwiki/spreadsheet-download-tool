@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import requests  # requires Python requests 1.x
-from openpyxl.workbook import Workbook
+import xlwt
 import unicodecsv
 import json
 import collections
@@ -42,31 +42,34 @@ def main():
     log(tables_and_columns)
 
     # This might look a bit complicated, because we're creating
-    # a multi-sheet XLSX and a bunch of CSV files at the same time.
+    # a multi-sheet XLS and a bunch of CSV files at the same time.
     # But it's more efficient than two separate loops.
     # We save state into the database, for the GUI to read.
-    excel_workbook = Workbook(optimized_write=True)
-    save_state('all_tables.xlsx', 'creating')
+    excel_workbook = xlwt.Workbook(encoding="utf-8")
+    save_state('all_tables.xls', 'creating')
     for table_name, column_names in tables_and_columns.items():
         csv_tempfile = make_temp_file('.csv')
         save_state("%s.csv" % table_name, 'creating')
         with open(csv_tempfile, 'wb') as f:
             # NOTE: create_sheet(title=foo) doesn't appear to name the sheet in
             # openpyxl version 1.5.7, hence manually setting title afterwards.
-            excel_worksheet = excel_workbook.create_sheet(title=table_name)
-            excel_worksheet.title = table_name
-            excel_worksheet.append(column_names)
+            excel_worksheet = excel_workbook.add_sheet(table_name)
+            for col_number, value in enumerate(column_names):
+                excel_worksheet.write(0, col_number, value)
+
             csv_writer = unicodecsv.DictWriter(f, column_names)
             csv_writer.writeheader()
             for chunk_of_rows in get_rows(box_url, table_name):
                 csv_writer.writerows(chunk_of_rows)
-                for row in chunk_of_rows:
-                    excel_worksheet.append(row.values())
+                for (row_number, row) in enumerate(chunk_of_rows):
+                    for col_number, value in enumerate(row.values()):
+                        excel_worksheet.write(1 + row_number,
+                                              col_number, value)
         replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
         save_state("%s.csv" % table_name, 'completed')
 
     xlsx_tempfile = make_temp_file('.xlsx')
-    excel_workbook.save(filename=xlsx_tempfile)
+    excel_workbook.save(xlsx_tempfile)
     replace_tempfile(xlsx_tempfile, 'http/all_tables.xlsx')
     save_state('all_tables.xlsx', 'completed')
 
