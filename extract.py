@@ -1,38 +1,41 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import requests # requires Python requests 1.x
-import optparse
+import requests  # requires Python requests 1.x
 from openpyxl.workbook import Workbook
-from openpyxl.writer.excel import ExcelWriter
 import unicodecsv
 import json
 import collections
 import scraperwiki
-import datetime
 from tempfile import mkstemp
 import os
 import sys
 from os.path import join, abspath, dirname
 
-DEBUG = True # prints debug messages to stdout during run
+DEBUG = True  # prints debug messages to stdout during run
 
-MAX_ROWS = 5000 # how many rows to request from the SQL API at any one time
+MAX_ROWS = 5000  # how many rows to request from the SQL API at any one time
 
-USAGE = """Convert data from a ScraperWiki box into CSVs and Excel spreadsheets.
-Reads from a file in the home directory containing  the full URL of the target box,
-including publishToken, ie http://box.scraperwiki.com/boxName/publishToken"""
+USAGE = """Convert data from a ScraperWiki box into CSVs and Excel
+spreadsheets.  Reads from a file in the home directory containing  the full URL
+of the target box, including publishToken, ie
+http://box.scraperwiki.com/boxName/publishToken
+"""
+
+
 def main():
     try:
         filename = abspath(join(dirname(__file__), '..', 'dataset_url.txt'))
         with open(filename, 'r') as f:
             box_url = f.read().strip()
     except IOError:
-        print("ERROR: No dataset URL in {}, try hitting regenerate.\n".format(filename))
+        print("ERROR: No dataset URL in {}, try hitting regenerate.\n".format(
+              filename))
         print(USAGE)
         sys.exit(1)
 
-    scraperwiki.sql.execute('CREATE TABLE IF NOT EXISTS "_state" ("filename" UNIQUE, "created")')
+    scraperwiki.sql.execute(
+        'CREATE TABLE IF NOT EXISTS "_state" ("filename" UNIQUE, "created")')
     scraperwiki.sql.commit()
 
     tables_and_columns = get_tables_and_columns(box_url)
@@ -42,7 +45,7 @@ def main():
     # a multi-sheet XLSX and a bunch of CSV files at the same time.
     # But it's more efficient than two separate loops.
     # We save state into the database, for the GUI to read.
-    excel_workbook = Workbook(optimized_write = True)
+    excel_workbook = Workbook(optimized_write=True)
     save_state('all_tables.xlsx', 'creating')
     for table_name, column_names in tables_and_columns.items():
         csv_tempfile = make_temp_file('.csv')
@@ -79,7 +82,9 @@ def replace_tempfile(tmp, destination):
 
 
 def log(string):
-    if DEBUG: print string
+    if DEBUG:
+        print string
+
 
 def call_api(box_url, params=None):
     # returns sql api output as a Python dict/list
@@ -87,15 +92,19 @@ def call_api(box_url, params=None):
     response = requests.get(box_url, params=params)
     log("GET %s" % response.url)
     if response.status_code == requests.codes.ok:
-        return json.loads(response.content, object_pairs_hook=collections.OrderedDict)
+        return json.loads(response.content,
+                          object_pairs_hook=collections.OrderedDict)
     else:
         response.raise_for_status()
+
 
 def query_sql_database(box_url, query):
     return call_api("%s/sql" % box_url, {"q": query})
 
+
 def get_database_meta(box_url):
     return call_api("%s/sql/meta" % box_url)
+
 
 def get_tables_and_columns(box_url):
     # returns a dict of lists, like so:
@@ -106,27 +115,38 @@ def get_tables_and_columns(box_url):
         result[table_name] = meta['table'][table_name]['columnNames']
     return result
 
+
 def get_rows(box_url, table_name):
     start = 0
     while True:
-        rows = query_sql_database(box_url, """SELECT * FROM "%s" LIMIT %d, %d""" % (table_name, start, MAX_ROWS))
+        rows = query_sql_database(
+            box_url, 'SELECT * FROM "%s" LIMIT %d, %d' % (
+                table_name, start, MAX_ROWS))
         if not rows:
             break
         yield rows
         start += MAX_ROWS
 
+
 def save_state(filename, state):
     log("%s %s" % (filename, state))
     if state == 'creating':
-        scraperwiki.sql.save(['filename'], {'filename': filename, "created": None}, '_state')
+        scraperwiki.sql.save(
+            unique_keys=['filename'],
+            data={
+                'filename': filename,
+                "created": None},
+            table_name='_state')
     elif state == 'completed':
         now = scraperwiki.sql.select('datetime("now") as now')[0]['now']
-        scraperwiki.sql.save(['filename'], {'filename': filename, "created": now}, '_state')
+        scraperwiki.sql.save(
+            ['filename'], {'filename': filename, "created": now}, '_state')
     else:
         raise Exception("Unknown status: %s" % state)
 
 try:
     main()
 except Exception as e:
-    print '"We encountered a Python error while extracting your dataset: %s"' % e
-    if DEBUG: raise
+    print('Error while extracting your dataset: %s' % e)
+    if DEBUG:
+        raise
