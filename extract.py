@@ -123,7 +123,7 @@ def save_state(filename, state):
         now = scraperwiki.sql.select('datetime("now") as now')[0]['now']
         scraperwiki.sql.save(['filename'], {'filename': filename, "created": now}, '_state')
     else:
-        raise Exception("Unknown status: %s" % status)
+        raise Exception("Unknown status: %s" % state)
 
 try:
     main()
