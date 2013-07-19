@@ -24,19 +24,8 @@ http://box.scraperwiki.com/boxName/publishToken
 
 
 def main():
-    try:
-        filename = abspath(join(dirname(__file__), '..', 'dataset_url.txt'))
-        with open(filename, 'r') as f:
-            box_url = f.read().strip()
-    except IOError:
-        print("ERROR: No dataset URL in {}, try hitting regenerate.\n".format(
-              filename))
-        print(USAGE)
-        sys.exit(1)
-
-    scraperwiki.sql.execute(
-        'CREATE TABLE IF NOT EXISTS "_state" ("filename" UNIQUE, "created")')
-    scraperwiki.sql.commit()
+    box_url = get_box_url()
+    create_state_table()
 
     tables_and_columns = get_tables_and_columns(box_url)
     log(tables_and_columns)
@@ -72,6 +61,24 @@ def main():
     excel_workbook.save(xlsx_tempfile)
     replace_tempfile(xlsx_tempfile, 'http/all_tables.xlsx')
     save_state('all_tables.xlsx', 'completed')
+
+
+def create_state_table():
+    scraperwiki.sql.execute(
+        'CREATE TABLE IF NOT EXISTS "_state" ("filename" UNIQUE, "created")')
+    scraperwiki.sql.commit()
+
+
+def get_box_url():
+    try:
+        filename = abspath(join(dirname(__file__), '..', 'dataset_url.txt'))
+        with open(filename, 'r') as f:
+            return f.read().strip()
+    except IOError:
+        print("ERROR: No dataset URL in {}, try hitting regenerate.\n".format(
+              filename))
+        print(USAGE)
+        sys.exit(1)
 
 
 def make_temp_file(suffix):
