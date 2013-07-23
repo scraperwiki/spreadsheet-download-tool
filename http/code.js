@@ -59,7 +59,7 @@ function showFiles(files){
     var elementId = '#file_' + file.rowid
     var loading = (file.age == '' || file.age == null)
     var needToCreate = !($(elementId).length)
-    var icon = file.filename.endsWith('csv') ? 'csv.png' : 'xlsx.png'
+    var icon = file.filename.endsWith('csv') ? 'csv.png' : 'xls.png'
 
     if(needToCreate) {
       $ul.append('<li id="file_'+ file.rowid +'"><a><img src="'+ icon +'" width="16" height="16"> '+ file.filename +' <span class="muted pull-right"></span></a></li>')

@@ -57,10 +57,10 @@ def main():
         replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
         save_state("%s.csv" % table_name, 'completed')
 
-    xlsx_tempfile = make_temp_file('.xlsx')
-    excel_workbook.save(xlsx_tempfile)
-    replace_tempfile(xlsx_tempfile, 'http/all_tables.xlsx')
-    save_state('all_tables.xlsx', 'completed')
+    excel_tempfile = make_temp_file('.xls')
+    excel_workbook.save(excel_tempfile)
+    replace_tempfile(excel_tempfile, 'http/all_tables.xls')
+    save_state('all_tables.xls', 'completed')
 
 
 def create_state_table():
