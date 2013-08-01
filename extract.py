@@ -158,5 +158,4 @@ try:
     main()
 except Exception as e:
     print('Error while extracting your dataset: %s' % e)
-    if DEBUG:
-        raise
+    raise
