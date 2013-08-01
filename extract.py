@@ -9,7 +9,6 @@ import collections
 import scraperwiki
 from tempfile import mkstemp
 import os
-import sys
 from os.path import join, abspath, dirname
 import traceback
 
@@ -17,9 +16,10 @@ DEBUG = True  # prints debug messages to stdout during run
 
 MAX_ROWS = 5000  # how many rows to request from the SQL API at any one time
 
-USAGE = """Convert data from a ScraperWiki box into CSVs and Excel
-spreadsheets.  Reads from a file in the home directory containing  the full URL
-of the target box, including publishToken, ie
+USAGE = """
+Convert data from a ScraperWiki box into CSVs and Excel spreadsheets. Reads
+from a file in the home directory containing the full URL of the target box,
+including publishToken, eg
 http://box.scraperwiki.com/boxName/publishToken
 """
 
@@ -111,15 +111,13 @@ def create_state_table():
 
 
 def get_box_url():
+    filename = abspath(join(dirname(__file__), '..', 'dataset_url.txt'))
     try:
-        filename = abspath(join(dirname(__file__), '..', 'dataset_url.txt'))
         with open(filename, 'r') as f:
             return f.read().strip()
     except IOError:
-        print("ERROR: No dataset URL in {}, try hitting regenerate.\n".format(
-              filename))
-        print(USAGE)
-        sys.exit(1)
+        raise RuntimeError("ERROR: No dataset URL in {}, try hitting "
+                           "regenerate.\n{}".format(filename, USAGE))
 
 
 def make_temp_file(suffix):
