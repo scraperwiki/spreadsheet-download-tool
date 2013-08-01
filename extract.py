@@ -24,64 +24,88 @@ http://box.scraperwiki.com/boxName/publishToken
 """
 
 
+class CsvOutput(object):
+    def __init__(self):
+        self.tempfiles = {}
+        self.writers = {}
+
+    def add_table(self, table_name, column_names):
+        self.tempfiles[table_name] = make_temp_file('.csv')
+        f = open(self.tempfiles[table_name], 'w')
+        self.writers[table_name] = unicodecsv.DictWriter(f, column_names)
+        self.writers[table_name].writeheader()
+
+        save_state("%s.csv" % table_name, 'creating')
+
+    def write_rows(self, table_name, rows):
+        self.writers[table_name].writerows(rows)
+
+    def finalise(self):
+        for table_name, tempfile in self.tempfiles.items():
+            replace_tempfile(tempfile, "http/{}.csv".format(table_name))
+            save_state("{}.csv".format(table_name), 'completed')
+        self.tempfiles = {}
+        self.writers = {}
+
+
+class ExcelOutput(object):
+    def __init__(self):
+        self.workbook = xlwt.Workbook(encoding="utf-8")
+        self.name = 'all_tables.xls'
+        self.sheets = {}
+        self.current_rows = {}
+        save_state(self.name, 'creating')
+
+    def add_table(self, table_name, column_names):
+        self.sheets[table_name] = self.workbook.add_sheet(table_name)
+        for col_number, value in enumerate(column_names):
+            self.sheets[table_name].write(0, col_number, value)
+        self.current_rows[table_name] = 1
+
+    def write_rows(self, table_name, rows):
+        for row in rows:
+            self.write_row(table_name, row)
+
+    def write_row(self, table_name, row):
+        for col_number, cell_value in enumerate(row.values()):
+            self.sheets[table_name].write(
+                self.current_rows[table_name],
+                col_number,
+                cell_value)
+            self.current_rows[table_name] += 1
+
+    def finalise(self):
+        tempfile = make_temp_file('.xls')
+        self.workbook.save(tempfile)
+        replace_tempfile(tempfile, 'http/{}'.format(self.name))
+        save_state(self.name, 'completed')
+
+
 def main():
+    (box_url, tables_and_columns) = setup()
+
+    csv_output = CsvOutput()
+    excel_output = ExcelOutput()
+
+    for table_name, column_names in tables_and_columns.items():
+        csv_output.add_table(table_name, column_names)
+        excel_output.add_table(table_name, column_names)
+
+        for chunk_of_rows in get_rows(box_url, table_name):
+            csv_output.write_rows(table_name, chunk_of_rows)
+            excel_output.write_rows(table_name, chunk_of_rows)
+
+    csv_output.finalise()
+    excel_output.finalise()
+
+
+def setup():
     box_url = get_box_url()
     create_state_table()
 
     tables_and_columns = get_tables_and_columns(box_url)
     log(tables_and_columns)
-
-    excel_workbook = xlwt.Workbook(encoding="utf-8")
-    save_state('all_tables.xls', 'creating')
-    for table_name, column_names in tables_and_columns.items():
-        output_tables(box_url, table_name, column_names, excel_workbook)
-
-    excel_tempfile = make_temp_file('.xls')
-    excel_workbook.save(excel_tempfile)
-    replace_tempfile(excel_tempfile, 'http/all_tables.xls')
-    save_state('all_tables.xls', 'completed')
-
-
-def output_tables(box_url, table_name, column_names, excel_workbook):
-    csv_tempfile = make_temp_file('.csv')
-    save_state("%s.csv" % table_name, 'creating')
-
-    with open(csv_tempfile, 'wb') as f:
-
-        csv_writer = initialise_csv_file(f, column_names)
-        excel_worksheet = initialise_excel_sheet(excel_workbook, table_name,
-                                                 column_names)
-
-        for row_offset, chunk_of_rows in get_rows(box_url, table_name):
-            write_csv_rows(csv_writer, chunk_of_rows)
-            write_excel_rows(excel_worksheet, chunk_of_rows, row_offset)
-
-    replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
-    save_state("%s.csv" % table_name, 'completed')
-
-
-def initialise_csv_file(f, column_names):
-    csv_writer = unicodecsv.DictWriter(f, column_names)
-    csv_writer.writeheader()
-    return csv_writer
-
-
-def initialise_excel_sheet(excel_workbook, table_name, column_names):
-    excel_worksheet = excel_workbook.add_sheet(table_name)
-    for col_number, value in enumerate(column_names):
-        excel_worksheet.write(0, col_number, value)
-    return excel_worksheet
-
-
-def write_csv_rows(csv_writer, chunk_of_rows):
-    csv_writer.writerows(chunk_of_rows)
-
-
-def write_excel_rows(excel_worksheet, chunk_of_rows, row_offset):
-    for (row_number, row) in enumerate(chunk_of_rows):
-        for col_number, value in enumerate(row.values()):
-            excel_worksheet.write(1 + row_offset + row_number,
-                                  col_number, value)
+    return box_url, tables_and_columns
 
 
 def create_state_table():
@@ -155,7 +179,7 @@ def get_rows(box_url, table_name):
                 table_name, start, MAX_ROWS))
         if not rows:
             break
-        yield start, rows
+        yield rows
         start += MAX_ROWS
 
 
