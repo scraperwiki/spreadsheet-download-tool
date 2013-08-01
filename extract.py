@@ -49,11 +49,11 @@ def main():
 
             csv_writer = unicodecsv.DictWriter(f, column_names)
             csv_writer.writeheader()
-            for chunk_of_rows in get_rows(box_url, table_name):
+            for row_offset, chunk_of_rows in get_rows(box_url, table_name):
                 csv_writer.writerows(chunk_of_rows)
                 for (row_number, row) in enumerate(chunk_of_rows):
                     for col_number, value in enumerate(row.values()):
-                        excel_worksheet.write(1 + row_number,
+                        excel_worksheet.write(1 + row_offset + row_number,
                                               col_number, value)
         replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
         save_state("%s.csv" % table_name, 'completed')
@@ -135,7 +135,7 @@ def get_rows(box_url, table_name):
                 table_name, start, MAX_ROWS))
         if not rows:
             break
-        yield rows
+        yield start, rows
         start += MAX_ROWS
 
 
