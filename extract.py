@@ -84,19 +84,15 @@ class ExcelOutput(object):
 def main():
     (box_url, tables_and_columns) = setup()
 
-    csv_output = CsvOutput()
-    excel_output = ExcelOutput()
+    outputters = [CsvOutput(), ExcelOutput()]
 
     for table_name, column_names in tables_and_columns.items():
-        csv_output.add_table(table_name, column_names)
-        excel_output.add_table(table_name, column_names)
+        [x.add_table(table_name, column_names) for x in outputters]
 
         for chunk_of_rows in get_rows(box_url, table_name):
-            csv_output.write_rows(table_name, chunk_of_rows)
-            excel_output.write_rows(table_name, chunk_of_rows)
+            [x.write_rows(table_name, chunk_of_rows) for x in outputters]
 
-    csv_output.finalise()
-    excel_output.finalise()
+    [x.finalise() for x in outputters]
 
 
 def setup():
