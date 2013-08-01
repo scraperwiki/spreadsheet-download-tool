@@ -91,6 +91,15 @@ function trackProgress(){
       scraperwiki.alert('Error contacting ScraperWiki API, please check you are online.', x.responseText, 1)
     }
   })
+
+  localSql('SELECT message from _error').done(function(messages){
+    $.each(messages, function(i, message){
+      $(".alert").remove()
+      scraperwiki.alert('Error running extract.py', message.message, 1)
+    })
+  })
+  // don't try and handle errors in getting an error message, as we're screwed
+  // anyway then and probably the _state query above will have failed too
 }
 
 function regenerate(){

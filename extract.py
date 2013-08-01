@@ -11,6 +11,7 @@ from tempfile import mkstemp
 import os
 import sys
 from os.path import join, abspath, dirname
+import traceback
 
 DEBUG = True  # prints debug messages to stdout during run
 
@@ -155,7 +156,12 @@ def save_state(filename, state):
         raise Exception("Unknown status: %s" % state)
 
 try:
+    scraperwiki.sql.execute("drop table if exists _error")
+    scraperwiki.sql.commit()
     main()
 except Exception as e:
     print('Error while extracting your dataset: %s' % e)
+    scraperwiki.sql.save(unique_keys=['message'], 
+      data = { 'message': traceback.format_exc() }, table_name='_error')
     raise
+
