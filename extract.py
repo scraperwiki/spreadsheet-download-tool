@@ -96,12 +96,18 @@ def main():
 
 
 def setup():
+    clear_errors()
     box_url = get_box_url()
     create_state_table()
 
     tables_and_columns = get_tables_and_columns(box_url)
     log(tables_and_columns)
     return box_url, tables_and_columns
+
+
+def clear_errors():
+    scraperwiki.sql.execute("DROP TABLE IF EXISTS _error")
+    scraperwiki.sql.commit()
 
 
 def create_state_table():
@@ -194,8 +200,6 @@ def save_state(filename, state):
         raise Exception("Unknown status: %s" % state)
 
 try:
-    scraperwiki.sql.execute("drop table if exists _error")
-    scraperwiki.sql.commit()
     main()
 except Exception as e:
     print('Error while extracting your dataset: %s' % e)
