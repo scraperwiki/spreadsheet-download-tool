@@ -41,8 +41,6 @@ def main():
         csv_tempfile = make_temp_file('.csv')
         save_state("%s.csv" % table_name, 'creating')
         with open(csv_tempfile, 'wb') as f:
-            # NOTE: create_sheet(title=foo) doesn't appear to name the sheet in
-            # openpyxl version 1.5.7, hence manually setting title afterwards.
             excel_worksheet = excel_workbook.add_sheet(table_name)
             for col_number, value in enumerate(column_names):
                 excel_worksheet.write(0, col_number, value)
@@ -161,7 +159,7 @@ try:
     main()
 except Exception as e:
     print('Error while extracting your dataset: %s' % e)
-    scraperwiki.sql.save(unique_keys=['message'], 
+    scraperwiki.sql.save(unique_keys=['message'],
       data = { 'message': traceback.format_exc() }, table_name='_error')
     raise
 
