@@ -31,35 +31,57 @@ def main():
     tables_and_columns = get_tables_and_columns(box_url)
     log(tables_and_columns)
 
-    # This might look a bit complicated, because we're creating
-    # a multi-sheet XLS and a bunch of CSV files at the same time.
-    # But it's more efficient than two separate loops.
-    # We save state into the database, for the GUI to read.
     excel_workbook = xlwt.Workbook(encoding="utf-8")
     save_state('all_tables.xls', 'creating')
     for table_name, column_names in tables_and_columns.items():
-        csv_tempfile = make_temp_file('.csv')
-        save_state("%s.csv" % table_name, 'creating')
-        with open(csv_tempfile, 'wb') as f:
-            excel_worksheet = excel_workbook.add_sheet(table_name)
-            for col_number, value in enumerate(column_names):
-                excel_worksheet.write(0, col_number, value)
-
-            csv_writer = unicodecsv.DictWriter(f, column_names)
-            csv_writer.writeheader()
-            for row_offset, chunk_of_rows in get_rows(box_url, table_name):
-                csv_writer.writerows(chunk_of_rows)
-                for (row_number, row) in enumerate(chunk_of_rows):
-                    for col_number, value in enumerate(row.values()):
-                        excel_worksheet.write(1 + row_offset + row_number,
-                                              col_number, value)
-        replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
-        save_state("%s.csv" % table_name, 'completed')
+        output_tables(box_url, table_name, column_names, excel_workbook)
 
     excel_tempfile = make_temp_file('.xls')
     excel_workbook.save(excel_tempfile)
     replace_tempfile(excel_tempfile, 'http/all_tables.xls')
     save_state('all_tables.xls', 'completed')
+
+
+def output_tables(box_url, table_name, column_names, excel_workbook):
+    csv_tempfile = make_temp_file('.csv')
+    save_state("%s.csv" % table_name, 'creating')
+
+    with open(csv_tempfile, 'wb') as f:
+
+        csv_writer = initialise_csv_file(f, column_names)
+        excel_worksheet = initialise_excel_sheet(excel_workbook, table_name,
+                                                 column_names)
+
+        for row_offset, chunk_of_rows in get_rows(box_url, table_name):
+            write_csv_rows(csv_writer, chunk_of_rows)
+            write_excel_rows(excel_worksheet, chunk_of_rows, row_offset)
+
+    replace_tempfile(csv_tempfile, "http/%s.csv" % table_name)
+    save_state("%s.csv" % table_name, 'completed')
+
+
+def initialise_csv_file(f, column_names):
+    csv_writer = unicodecsv.DictWriter(f, column_names)
+    csv_writer.writeheader()
+    return csv_writer
+
+
+def initialise_excel_sheet(excel_workbook, table_name, column_names):
+    excel_worksheet = excel_workbook.add_sheet(table_name)
+    for col_number, value in enumerate(column_names):
+        excel_worksheet.write(0, col_number, value)
+    return excel_worksheet
+
+
+def write_csv_rows(csv_writer, chunk_of_rows):
+    csv_writer.writerows(chunk_of_rows)
+
+
+def write_excel_rows(excel_worksheet, chunk_of_rows, row_offset):
+    for (row_number, row) in enumerate(chunk_of_rows):
+        for col_number, value in enumerate(row.values()):
+            excel_worksheet.write(1 + row_offset + row_number,
+                                  col_number, value)
 
 
 def create_state_table():
@@ -159,7 +181,8 @@ try:
     main()
 except Exception as e:
     print('Error while extracting your dataset: %s' % e)
-    scraperwiki.sql.save(unique_keys=['message'],
-      data = { 'message': traceback.format_exc() }, table_name='_error')
+    scraperwiki.sql.save(
+        unique_keys=['message'],
+        data={'message': traceback.format_exc()},
+        table_name='_error')
     raise
-
