@@ -54,6 +54,7 @@ class ExcelOutput(object):
         self.name = 'all_tables.xls'
         self.sheets = {}
         self.current_rows = {}
+        self.fail = False
         save_state(self.name, 'creating')
 
     def add_table(self, table_name, column_names):
@@ -67,17 +68,27 @@ class ExcelOutput(object):
             self.write_row(table_name, row)
 
     def write_row(self, table_name, row):
+        if self.fail:
+            return
         for col_number, cell_value in enumerate(row.values()):
-            self.sheets[table_name].write(
-                self.current_rows[table_name],
-                col_number,
-                cell_value)
+            try:
+                self.sheets[table_name].write(
+                    self.current_rows[table_name],
+                    col_number,
+                    cell_value)
+            except ValueError:
+                self.fail = True
         self.current_rows[table_name] += 1
 
     def finalise(self):
+	output_name = 'http/{}'.format(self.name)
+        if self.fail:
+            save_state(self.name, 'failed')
+            os.path.exists(output_name) and os.remove(output_name)
+            return
         tempfile = make_temp_file('.xls')
         self.workbook.save(tempfile)
-        replace_tempfile(tempfile, 'http/{}'.format(self.name))
+        replace_tempfile(tempfile, output_name)
         save_state(self.name, 'completed')
 
 
@@ -196,6 +207,9 @@ def save_state(filename, state):
         now = scraperwiki.sql.select('datetime("now") as now')[0]['now']
         scraperwiki.sql.save(
             ['filename'], {'filename': filename, "created": now}, '_state')
+    elif state == 'failed':
+        scraperwiki.sql.execute('delete from _state where filename = ?', filename)
+        scraperwiki.sql.commit()
     else:
         raise Exception("Unknown status: %s" % state)
 
