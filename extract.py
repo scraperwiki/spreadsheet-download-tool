@@ -14,7 +14,7 @@ import traceback
 
 DEBUG = True  # prints debug messages to stdout during run
 
-MAX_ROWS = 5000  # how many rows to request from the SQL API at any one time
+PAGE_SIZE = 5000  # how many rows to request from the SQL API at any one time
 
 USAGE = """
 Convert data from a ScraperWiki box into CSVs and Excel spreadsheets. Reads
@@ -89,8 +89,8 @@ def main():
     for table_name, column_names in tables_and_columns.items():
         [x.add_table(table_name, column_names) for x in outputters]
 
-        for chunk_of_rows in get_rows(box_url, table_name):
-            [x.write_rows(table_name, chunk_of_rows) for x in outputters]
+        for some_rows in get_paged_rows(box_url, table_name):
+            [x.write_rows(table_name, some_rows) for x in outputters]
 
     [x.finalise() for x in outputters]
 
@@ -171,16 +171,16 @@ def get_tables_and_columns(box_url):
     return result
 
 
-def get_rows(box_url, table_name):
+def get_paged_rows(box_url, table_name):
     start = 0
     while True:
         rows = query_sql_database(
             box_url, 'SELECT * FROM "%s" LIMIT %d, %d' % (
-                table_name, start, MAX_ROWS))
+                table_name, start, PAGE_SIZE))
         if not rows:
             break
         yield rows
-        start += MAX_ROWS
+        start += PAGE_SIZE
 
 
 def save_state(filename, state):
