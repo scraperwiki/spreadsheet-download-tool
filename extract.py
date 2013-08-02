@@ -72,7 +72,7 @@ class ExcelOutput(object):
                 self.current_rows[table_name],
                 col_number,
                 cell_value)
-            self.current_rows[table_name] += 1
+        self.current_rows[table_name] += 1
 
     def finalise(self):
         tempfile = make_temp_file('.xls')
