@@ -88,7 +88,7 @@ function trackProgress(){
       regenerate()
     } else {
       $(".alert").remove()
-      scraperwiki.alert('Error contacting ScraperWiki API, please check you are online.', x.responseText, 1)
+      scraperwiki.alert('Error contacting ScraperWiki API, please check you are online.', x.responseText + " " + z, 1)
     }
   })
 
