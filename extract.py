@@ -81,7 +81,7 @@ class ExcelOutput(object):
         self.current_rows[table_name] += 1
 
     def finalise(self):
-	output_name = 'http/{}'.format(self.name)
+        output_name = 'http/{}'.format(self.name)
         if self.fail:
             save_state(self.name, 'failed')
             os.path.exists(output_name) and os.remove(output_name)
