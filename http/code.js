@@ -1,100 +1,92 @@
-function humanOldness(diff){
-  // diff should be a value in seconds
-  var  day_diff = Math.floor(diff / 86400)
-  if ( isNaN(day_diff) || day_diff < 0 || day_diff >= 31 )
-    return
-  return day_diff == 0 && (
-      diff < 60 && "brand new" ||
-      diff < 120 && "1 minute old" ||
-      diff < 3600 && Math.floor( diff / 60 ) + " minutes old" ||
-      diff < 7200 && "1 hour old" ||
-      diff < 86400 && Math.floor( diff / 3600 ) + " hours old") ||
-    day_diff == 1 && "1 day old" ||
-    day_diff < 7 && day_diff + " days old" ||
-    day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks old"
+var issueTracker = 'https://github.com/scraperwiki/spreadsheet-download-tool/issues'
+
+var reportAjaxError = function(jqXHR, textStatus, errorThrown, source){
+  console.log(source + ' returned an ajax error:', jqXHR, textStatus, errorThrown)
+  scraperwiki.alert('There was a problem reading your dataset', 'The <code>' + source + '</code> function returned an ajax ' + textStatus + ' error. <a href="' + issueTracker + '" target="_blank">Click here to log this as a bug.</a>', true)
 }
 
-// http://stackoverflow.com/questions/280634
-String.prototype.endsWith = function(suffix) {
-    return this.indexOf(suffix, this.length - suffix.length) !== -1
-}
-
-function showFiles(files){
-  // files should be a list of objects, containing rowids, filenames and ages:
-  // [ {rowid: 2, filename: 'test.csv', age: 3600}, {…}, … ]
-  var $ul = $('ul.nav')
-  $('li', $ul).each(function(){
-    var li = $(this)
-    var id = li.attr('id')
-    var found = false
-    $.each(files, function(i, file){
-      if('file_' + file.rowid == id){
-        found = true
+var getDatasetTablesAndGrids = function(cb){
+  // calls the `cb` callback with an object containing
+  // lists of tables and grids in the parent dataset
+  // eg: {"tables": [{"id":"_grids", "name":"_grids"}], "grids": [...]}
+  var tablesAndGrids = {
+    "tables": [],
+    "grids": []
+  }
+  scraperwiki.dataset.sql.meta().fail(function(jqXHR, textStatus, errorThrown){
+    reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql.meta()')
+    cb(tablesAndGrids)
+  }).done(function(meta){
+    console.log('dataset contains', meta.table.length, 'tables:', meta.table)
+    if(meta.table.length == 0){
+      scraperwiki.alert('Your dataset has no tables', 'This shouldn&rsquo;t really be an error. We should handle this more gracefully.')
+      cb(tablesAndGrids)
+    } else {
+      $.each(meta.table, function(table_name, table_meta){
+        tablesAndGrids.tables.push({"id": table_name, "name": table_name})
+      })
+      if('_grids' in meta.table){
+        scraperwiki.dataset.sql('SELECT * FROM _grids').fail(function(jqXHR, textStatus, errorThrown){
+          reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql()')
+          cb(tablesAndGrids)
+        }).done(function(grids){
+          $.each(grids, function(i, grid){
+            tablesAndGrids.grids.push({"id": grid.checksum, "name": grid.title})
+          })
+          cb(tablesAndGrids)
+        })
       }
-    })
-    if(!found){
-      li.remove()
-    }
-  })
-  $.each(files, function(i, file){
-    var elementId = '#file_' + file.rowid
-    var loading = (file.age == '' || file.age == null)
-    var needToCreate = !($(elementId).length)
-    var icon = file.filename.endsWith('csv') ? 'csv.png' : 'xls.png'
-
-    if(needToCreate) {
-      $ul.append('<li id="file_'+ file.rowid +'"><a><img src="'+ icon +'" width="16" height="16"> '+ file.filename +' <span class="muted pull-right"></span></a></li>')
-    }
-
-    if(loading){
-      var timeOrLoading = 'Creating <img src="loading.gif" width="16" height="16">'
-      $(elementId + ' a').addClass('loading').removeAttr('href')
-    } else {
-      var timeOrLoading = humanOldness(file.age)
-      $(elementId + ' a').removeClass('loading').attr('href', file.filename)
-    }
-
-    if($(elementId + ' span.muted').html() != timeOrLoading){
-      console.log($(elementId + ' span.muted').html(), timeOrLoading)
-      $(elementId + ' span.muted').html(timeOrLoading)  // update the time
     }
   })
 }
 
-function trackProgress(){
-  scraperwiki.tool.sql('SELECT rowid, filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
-    showFiles(files)
-  }).fail(function(x, y, z){
-    if(x.responseText.match(/database file does not exist/) != null){
-      regenerate()
-    } else {
-      $(".alert").remove()
-      scraperwiki.alert('Error contacting ScraperWiki API, please check you are online.', x.responseText + " " + z, 1)
+var renderListItem = function(id, filename, state, timestamp){
+  // `id` should be a unique id for the table/grid
+  // `name` should be a filename (either generated, or prospective)
+  // `state` should be either "generated", "generating" or "waiting"
+  // `timestamp` should (optionally) be an ISO-8601 creation date for the file
+  var $li = $('<li>')
+  $li.attr('data-id', id)
+  var $a = $('<a>')
+  $a.append('<span class="filename">' + filename + '</span>')
+  if(state == 'generated'){
+    $a.addClass(filename.split('.').pop()) // gets everything after the last dot (ie: extension)
+    if(typeof timestamp === 'string'){
+      $a.attr('data-timestamp', timestamp)
+      $a.append('<span class="state">' + moment(timestamp).add(1, 'hour').fromNow() + '</span>')
     }
-  })
-
-  scraperwiki.tool.sql('SELECT message from _error').done(function(messages){
-    $.each(messages, function(i, message){
-      $(".alert").remove()
-      scraperwiki.alert('Error running extract.py', message.message, 1)
-    })
-  })
-  // don't try and handle errors in getting an error message, as we're screwed
-  // anyway then and probably the _state query above will have failed too
-}
-
-function regenerate(){
-
-  scraperwiki.tool.exec('echo "' + scraperwiki.readSettings().target.url + '" > ~/dataset_url.txt; ' +
-                   'echo "started"; run-one tool/extract.py &> log.txt &')
-  $('#regenerate').attr('disabled', true)
+    $a.attr('href', scraperwiki.readSettings().target.url + '/http/' + filename)
+  } else if(state == 'generating'){
+    $a.addClass('generating')
+    $a.append('<span class="state">Generating</span>')
+  } else {
+    $a.addClass('waiting')
+    $a.append('<span class="state">Waiting</span>')
+  }
+  $li.append($a)
+  if($('li[data-id="' + id + '"]').length){
+    // a list item for this file already exists, so replace it
+    $('li[data-id="' + id + '"]').replaceWith($li)
+  } else {
+    // this is a new file, so append it to the list
+    $('#files').append($li)
+  }
 }
 
 $(function(){
 
-  $(document).on('click', '#regenerate', regenerate)
-
-  trackProgress()
-  poll = setInterval(trackProgress, 2000)
+  getDatasetTablesAndGrids(function(tablesAndGrids){
+    $.each(tablesAndGrids.tables, function(i, table){
+      if(i==0){
+        renderListItem(table.id, table.name + '.csv', 'generated', moment().subtract('hour', 2).format())
+      } else if(i==1){
+        renderListItem(table.id, table.name + '.csv', 'generating')
+      } else {
+        renderListItem(table.id, table.name + '.csv', 'waiting')
+      }
+    })
+    renderListItem('all_tables', 'all_tables.csv', 'waiting')
+    $('p.controls').show()
+  })
 
 })

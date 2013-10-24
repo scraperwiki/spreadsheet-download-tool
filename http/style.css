@@ -1,33 +1,49 @@
-ul.nav, p.controls, p.hints {
+#files, p.controls, p.hints {
   width: 400px;
   margin: 20px auto;
 }
 
-li > a > img {
-  margin-right: 4px;
-  vertical-align: -2px;
+#files a {
+  cursor: default;
+  padding-left: 30px;
+  background-position: 8px 50%;
+  background-repeat: no-repeat;
 }
 
-li .pull-right img {
-  vertical-align: -2px;
-  margin-left: 4px;
+#files a:link {
+  cursor: pointer;
 }
 
-li > a.loading,
-li > a.loading:hover {
-  background-color: transparent;
-  color: #999;
-  color: #A9C8D8;
+#files a.generating {
+  background-image: url(loading.gif);
 }
 
-li > a.loading > img {
-  opacity: 0.6;
+#files a.generating,
+#files a.waiting {
+  color: #aaa;
 }
 
-@media only screen and (max-width: 619px) {
-  
-  ul.nav, p.controls {
-    width: 280px;
-  }
-  
+#files a.generating:hover,
+#files a.waiting:hover {
+  /* remove bootstrap hover styles */
+  background-color: #fff;
+}
+
+#files a.generating .state,
+#files a.waiting .state {
+  color: #ccc;
+}
+
+#files a.csv {
+  background-image: url(csv.png);
+}
+
+#files a.xls {
+  background-image: url(xls.png);
+}
+
+#files .state {
+  float: right;
+  color: #aaa;
+  font-weight: 200;
 }
