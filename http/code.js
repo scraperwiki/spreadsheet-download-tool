@@ -19,25 +19,6 @@ String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1
 }
 
-function localSql(sql, success, error) {
-  var settings = scraperwiki.readSettings()
-  options = {
-    url: "" + settings.source.url + "/sql/",
-    type: "GET",
-    dataType: "json",
-    data: {
-      q: sql
-    }
-  }
-  if (success != null) {
-    options.success = success
-  }
-  if (error != null) {
-    options.error = error
-  }
-  return $.ajax(options)
-}
-
 function showFiles(files){
   // files should be a list of objects, containing rowids, filenames and ages:
   // [ {rowid: 2, filename: 'test.csv', age: 3600}, {…}, … ]
@@ -81,7 +62,7 @@ function showFiles(files){
 }
 
 function trackProgress(){
-  localSql('SELECT rowid, filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
+  scraperwiki.tool.sql('SELECT rowid, filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
     showFiles(files)
   }).fail(function(x, y, z){
     if(x.responseText.match(/database file does not exist/) != null){
@@ -92,7 +73,7 @@ function trackProgress(){
     }
   })
 
-  localSql('SELECT message from _error').done(function(messages){
+  scraperwiki.tool.sql('SELECT message from _error').done(function(messages){
     $.each(messages, function(i, message){
       $(".alert").remove()
       scraperwiki.alert('Error running extract.py', message.message, 1)
@@ -104,7 +85,7 @@ function trackProgress(){
 
 function regenerate(){
 
-  scraperwiki.exec('echo "' + scraperwiki.readSettings().target.url + '" > ~/dataset_url.txt; ' + 
+  scraperwiki.tool.exec('echo "' + scraperwiki.readSettings().target.url + '" > ~/dataset_url.txt; ' +
                    'echo "started"; run-one tool/extract.py &> log.txt &')
   $('#regenerate').attr('disabled', true)
 }
