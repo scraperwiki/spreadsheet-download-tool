@@ -1,48 +1,60 @@
-#files, p.controls, p.hints {
+#files, #archives, p.controls, p.hints {
   width: 400px;
   margin: 20px auto;
 }
 
-#files a {
+#files a,
+#archives a {
   cursor: default;
   padding-left: 30px;
   background-position: 8px 50%;
   background-repeat: no-repeat;
 }
 
-#files a:link {
+#files a:link,
+#archives a:link {
   cursor: pointer;
 }
 
-#files a.generating {
+#files a.generating,
+#archives a.generating {
   background-image: url(loading.gif);
 }
 
 #files a.generating,
-#files a.waiting {
+#files a.waiting,
+#archives a.generating,
+#archives a.waiting {
   color: #aaa;
 }
 
 #files a.generating:hover,
-#files a.waiting:hover {
+#files a.waiting:hover,
+#archives a.generating:hover,
+#archives a.waiting:hover {
   /* remove bootstrap hover styles */
   background-color: #fff;
 }
 
 #files a.generating .state,
-#files a.waiting .state {
+#files a.waiting .state,
+#archives a.generating .state,
+#archives a.waiting .state {
   color: #ccc;
 }
 
-#files a.csv {
+#files a.csv,
+#archives a.csv {
   background-image: url(csv.png);
 }
 
-#files a.xls {
+#files a.xls,
+#archives a.xls {
   background-image: url(xls.png);
 }
 
-#files .state {
+#files .state,
+#archives .state {
   float: right;
   color: #aaa;
   font-weight: 200;

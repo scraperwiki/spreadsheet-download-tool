@@ -3,7 +3,13 @@ window.tablesAndGrids = {
   "tables": [],
   "grids": []
 }
-window.files = []
+window.files = [{
+  'filename': 'all_tables.xls',
+  'state': 'waiting',
+  'created': null,
+  'source_type': null,
+  'source_id': 'all_tables'
+}]
 window.issueTracker = 'https://github.com/scraperwiki/spreadsheet-download-tool/issues'
 
 var reportAjaxError = function(jqXHR, textStatus, errorThrown, source){
@@ -91,11 +97,16 @@ var updateFileList = function(cb){
 
 var renderListItem = function(file){
   // `file.source_id` should be a unique id for the table/grid
-  // `file.source_type` should be either "table" or "grid"
+  // `file.source_type` should be either "table", "grid", or null
   // `file.filename` should be a filename (either generated, or prospective)
   // `file.state` should be either "generated", "generating" or "waiting"
   // `file.created` should (optionally) be an ISO-8601 creation date for the file
   var $li = $('<li>')
+  if(file.source_id == 'all_tables'){
+    var $ul = $('#archives')
+  } else {
+    var $ul = $('#files')
+  }
   $li.attr('data-source-id', file.source_id)
   $li.attr('data-source-type', file.source_type)
   var $a = $('<a>')
@@ -115,12 +126,12 @@ var renderListItem = function(file){
     $a.append('<span class="state">Waiting</span>')
   }
   $li.append($a)
-  if($('li[data-source-id="' + file.source_id + '"]').length){
+  if($('li[data-source-id="' + file.source_id + '"]', $ul).length){
     // a list item for this file already exists, so replace it
-    $('li[data-source-id="' + file.source_id + '"]').replaceWith($li)
+    $('li[data-source-id="' + file.source_id + '"]', $ul).replaceWith($li)
   } else {
     // this is a new file, so append it to the list
-    $('#files').append($li)
+    $ul.append($li)
   }
 }
 
