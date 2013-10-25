@@ -223,10 +223,10 @@ def get_grid_rows(grid_url):
 
 def save_state(filename, source_type, source_id, state):
     log("%s %s" % (filename, state))
-    if state == 'generating':
+    if state in ['generating', 'waiting', 'failed']:
         scraperwiki.sql.save(['filename'], {
             'filename': filename,
-            'state': 'generating',
+            'state': state,
             'created': None,
             'source_type': source_type,
             'source_id': source_id
@@ -236,14 +236,6 @@ def save_state(filename, source_type, source_id, state):
             'filename': filename,
             'state': 'generated',
             'created': '{}+00:00'.format(datetime.now().isoformat()),
-            'source_type': source_type,
-            'source_id': source_id
-        }, '_state')
-    elif state == 'failed':
-        scraperwiki.sql.save(['filename'], {
-            'filename': filename,
-            'state': 'failed',
-            'created': None,
             'source_type': source_type,
             'source_id': source_id
         }, '_state')
