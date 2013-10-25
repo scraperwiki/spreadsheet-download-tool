@@ -12,6 +12,7 @@ from os.path import join, abspath, dirname
 import scraperwiki
 
 def main():
+    log('# {} creating downloads:'.format(datetime.now().isoformat()))
     box_url = get_box_url()
     tables = get_dataset_tables(box_url)
     grids = get_dataset_grids(box_url)
