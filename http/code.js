@@ -1,100 +1,218 @@
-function humanOldness(diff){
-  // diff should be a value in seconds
-  var  day_diff = Math.floor(diff / 86400)
-  if ( isNaN(day_diff) || day_diff < 0 || day_diff >= 31 )
-    return
-  return day_diff == 0 && (
-      diff < 60 && "brand new" ||
-      diff < 120 && "1 minute old" ||
-      diff < 3600 && Math.floor( diff / 60 ) + " minutes old" ||
-      diff < 7200 && "1 hour old" ||
-      diff < 86400 && Math.floor( diff / 3600 ) + " hours old") ||
-    day_diff == 1 && "1 day old" ||
-    day_diff < 7 && day_diff + " days old" ||
-    day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks old"
+window.timer = null
+window.tablesAndGrids = null
+window.files = null
+window.issueTracker = 'https://github.com/scraperwiki/spreadsheet-download-tool/issues'
+
+var reportAjaxError = function(jqXHR, textStatus, errorThrown, source){
+  console.log(source + ' returned an ajax error:', jqXHR, textStatus, errorThrown)
+  scraperwiki.alert('There was a problem reading your dataset', 'The <code>' + source + '</code> function returned an ajax ' + textStatus + ' error. <a href="' + issueTracker + '" target="_blank">Click here to log this as a bug.</a>', true)
 }
 
-// http://stackoverflow.com/questions/280634
-String.prototype.endsWith = function(suffix) {
-    return this.indexOf(suffix, this.length - suffix.length) !== -1
+var resetGlobalVariables = function(){
+  window.tablesAndGrids = {
+    "tables": [],
+    "grids": []
+  }
+  window.files = []
 }
 
-function showFiles(files){
-  // files should be a list of objects, containing rowids, filenames and ages:
-  // [ {rowid: 2, filename: 'test.csv', age: 3600}, {…}, … ]
-  var $ul = $('ul.nav')
-  $('li', $ul).each(function(){
-    var li = $(this)
-    var id = li.attr('id')
-    var found = false
+var getDatasetTablesAndGrids = function(cb){
+  // calls the `cb` callback with an object containing
+  // lists of tables and grids in the parent dataset
+  // eg: {"tables": [{"id":"_grids", "name":"_grids"}], "grids": [...]}
+  scraperwiki.dataset.sql.meta().fail(function(jqXHR, textStatus, errorThrown){
+    reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql.meta()')
+    cb(window.tablesAndGrids)
+  }).done(function(meta){
+    if(meta.table.length == 0){
+      scraperwiki.alert('Your dataset has no tables', 'This shouldn&rsquo;t really be an error. We should handle this more gracefully.')
+      cb(window.tablesAndGrids)
+    } else {
+      $.each(meta.table, function(table_name, table_meta){
+        if(table_name.indexOf('_') != 0){
+          window.tablesAndGrids.tables.push({"id": table_name, "name": table_name})
+        }
+      })
+      if('_grids' in meta.table){
+        scraperwiki.dataset.sql('SELECT * FROM _grids').fail(function(jqXHR, textStatus, errorThrown){
+          reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql()')
+          cb(window.tablesAndGrids)
+        }).done(function(grids){
+          $.each(grids, function(i, grid){
+            window.tablesAndGrids.grids.push({"id": grid.checksum, "name": grid.title})
+          })
+          cb(window.tablesAndGrids)
+        })
+      }
+    }
+  })
+}
+
+var generateFileList = function(cb){
+  // given a load of sources in window.tablesAndGrids, and
+  // information from the _state SQL table, this function
+  // contructs a list of files generated / to be generated
+  $.each(window.tablesAndGrids.tables, function(i, table){
+    window.files.push({
+      'filename': makeFilename(table.name) + '.csv',
+      'state': 'waiting',
+      'created': null,
+      'source_type': 'table',
+      'source_id': table.name
+    })
+  })
+  $.each(window.tablesAndGrids.grids, function(i, grid){
+    window.files.push({
+      'filename': makeFilename(grid.name) + '.csv',
+      'state': 'waiting',
+      'created': null,
+      'source_type': 'table',
+      'source_id': grid.id
+    })
+  })
+  window.files.push({
+    'filename': 'all_tables.xls',
+    'state': 'waiting',
+    'created': null,
+    'source_type': null,
+    'source_id': 'all_tables'
+  })
+  updateFileList(cb)
+}
+
+var updateFileList = function(cb){
+  scraperwiki.tool.sql('SELECT filename, state, created FROM _state').done(function(files){
     $.each(files, function(i, file){
-      if('file_' + file.rowid == id){
-        found = true
+      fileRecordToUpdate = _.findWhere(window.files, {'filename':file.filename})
+      if(typeof fileRecordToUpdate !== 'undefined'){
+        fileRecordToUpdate.state = file.state
+        fileRecordToUpdate.created = file.created
       }
     })
-    if(!found){
-      li.remove()
-    }
-  })
-  $.each(files, function(i, file){
-    var elementId = '#file_' + file.rowid
-    var loading = (file.age == '' || file.age == null)
-    var needToCreate = !($(elementId).length)
-    var icon = file.filename.endsWith('csv') ? 'csv.png' : 'xls.png'
-
-    if(needToCreate) {
-      $ul.append('<li id="file_'+ file.rowid +'"><a><img src="'+ icon +'" width="16" height="16"> '+ file.filename +' <span class="muted pull-right"></span></a></li>')
-    }
-
-    if(loading){
-      var timeOrLoading = 'Creating <img src="loading.gif" width="16" height="16">'
-      $(elementId + ' a').addClass('loading').removeAttr('href')
-    } else {
-      var timeOrLoading = humanOldness(file.age)
-      $(elementId + ' a').removeClass('loading').attr('href', file.filename)
-    }
-
-    if($(elementId + ' span.muted').html() != timeOrLoading){
-      console.log($(elementId + ' span.muted').html(), timeOrLoading)
-      $(elementId + ' span.muted').html(timeOrLoading)  // update the time
-    }
-  })
-}
-
-function trackProgress(){
-  scraperwiki.tool.sql('SELECT rowid, filename, STRFTIME("%s", "now") - STRFTIME("%s", created) AS age FROM _state ORDER BY filename ASC').done(function(files){
-    showFiles(files)
-  }).fail(function(x, y, z){
-    if(x.responseText.match(/database file does not exist/) != null){
+    cb()
+  }).fail(function(jqXHR, textStatus, errorThrown){
+    if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText)){
+      console.log('first run!')
       regenerate()
     } else {
-      $(".alert").remove()
-      scraperwiki.alert('Error contacting ScraperWiki API, please check you are online.', x.responseText + " " + z, 1)
+      console.log('updateFileList failed', jqXHR, textStatus, errorThrown)
     }
+    cb()
   })
-
-  scraperwiki.tool.sql('SELECT message from _error').done(function(messages){
-    $.each(messages, function(i, message){
-      $(".alert").remove()
-      scraperwiki.alert('Error running extract.py', message.message, 1)
-    })
-  })
-  // don't try and handle errors in getting an error message, as we're screwed
-  // anyway then and probably the _state query above will have failed too
 }
 
-function regenerate(){
+var renderListItem = function(file){
+  // `file.source_id` should be a unique id for the table/grid
+  // `file.source_type` should be either "table", "grid", or null
+  // `file.filename` should be a filename (either generated, or prospective)
+  // `file.state` should be either "generated", "generating" or "waiting"
+  // `file.created` should (optionally) be an ISO-8601 creation date for the file
+  var $li = $('<li>')
+  if(file.source_id == 'all_tables'){
+    var $ul = $('#archives')
+  } else {
+    var $ul = $('#files')
+  }
+  $li.attr('data-source-id', file.source_id)
+  $li.attr('data-source-type', file.source_type)
+  var $a = $('<a>')
+  $a.append('<span class="filename">' + file.filename + '</span>')
+  if(file.state == 'generated'){
+    $a.addClass(file.filename.split('.').pop()) // gets everything after the last dot (ie: extension)
+    if(typeof file.created === 'string'){
+      $a.attr('data-timestamp', file.created)
+      $a.append('<span class="state">' + moment(file.created).fromNow() + '</span>')
+    }
+    $a.attr('href', scraperwiki.readSettings().source.url + '/http/' + file.filename)
+  } else if(file.state == 'generating'){
+    $a.addClass('generating')
+    $a.append('<span class="state">Generating</span>')
+  } else {
+    $a.addClass('waiting')
+    $a.append('<span class="state">Waiting</span>')
+  }
+  $li.append($a)
+  if($('li[data-source-id="' + file.source_id + '"]', $ul).length){
+    // a list item for this file already exists, so replace it
+    $('li[data-source-id="' + file.source_id + '"]', $ul).replaceWith($li)
+  } else {
+    // this is a new file, so append it to the list
+    $ul.append($li)
+  }
+}
 
-  scraperwiki.tool.exec('echo "' + scraperwiki.readSettings().target.url + '" > ~/dataset_url.txt; ' +
-                   'echo "started"; run-one tool/extract.py &> log.txt &')
-  $('#regenerate').attr('disabled', true)
+var renderFiles = function(){
+  $.each(window.files, function(i, file){
+    renderListItem(file)
+  })
+  // $('p.controls').show()
+}
+
+var makeFilename = function(naughtyString){
+  return naughtyString.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9-_.]+/g, '')
+}
+
+var saveDatasetUrl = function(cb){
+  scraperwiki.tool.exec('echo "' + scraperwiki.readSettings().target.url + '" > ~/dataset_url.txt')
+  if(typeof cb != 'undefined'){
+    cb()
+  }
+}
+
+var regenerate = function(){
+  scraperwiki.tool.exec('echo "started"; run-one tool/create_downloads.py &> log.txt &')
+  window.timer = setInterval(check_status, 2000)
+}
+
+var check_status = function(){
+  var unfinishedFiles = _.reject(window.files, function(file){
+    return file.state == 'generated'
+  })
+  if(unfinishedFiles.length){
+    // some files are still outstanding, so check _state database for updates
+    updateFileList(renderFiles)
+  } else {
+    // no files outstanding, don't bother checking _state database
+    renderFiles()
+  }
+}
+
+var resetStatusDatabase = function(cb){
+  scraperwiki.tool.exec('tool/reset_downloads.py', cb, function(jqXHR, textStatus, errorThrown){
+    reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("run-one tool/reset_downloads.py")')
+  })
+}
+
+var refresh_click = function(){
+  if($('#refresh').is('.refreshing')){
+    return false
+  }
+  $('#refresh').addClass('refreshing')
+  clearInterval(window.timer)
+  resetGlobalVariables()
+  resetStatusDatabase(function(){
+    getDatasetTablesAndGrids(function(){
+      generateFileList(function(){
+        $('#refresh').removeClass('refreshing')
+        renderFiles()
+        regenerate()
+      })
+    })
+  })
 }
 
 $(function(){
 
-  $(document).on('click', '#regenerate', regenerate)
+  resetGlobalVariables()
 
-  trackProgress()
-  poll = setInterval(trackProgress, 2000)
+  saveDatasetUrl()
+
+  getDatasetTablesAndGrids(function(){
+    generateFileList(function(){
+      renderFiles()
+    })
+  })
+
+  $('#refresh').on('click', refresh_click)
 
 })

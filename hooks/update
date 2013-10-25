@@ -4,6 +4,7 @@ date > ~/hook_update.log
 
 URL=$(cat ~/dataset_url.txt)
 if [ "${URL}" != "" ]; then
-    run-one ~/tool/extract.py > ~/log.txt 2>&1
+    run-one ~/tool/reset_downloads.py > ~/log.txt 2>&1
+    run-one ~/tool/create_downloads.py >> ~/log.txt 2>&1
 fi
 
