@@ -54,7 +54,7 @@ var generateFileList = function(cb){
   // contructs a list of files generated / to be generated
   $.each(window.tablesAndGrids.tables, function(i, table){
     window.files.push({
-      'filename': table.name + '.csv',
+      'filename': makeFilename(table.name) + '.csv',
       'state': 'waiting',
       'created': null,
       'source_type': 'table',
@@ -63,7 +63,7 @@ var generateFileList = function(cb){
   })
   $.each(window.tablesAndGrids.grids, function(i, grid){
     window.files.push({
-      'filename': grid.name + '.csv',
+      'filename': makeFilename(grid.name) + '.csv',
       'state': 'waiting',
       'created': null,
       'source_type': 'table',
@@ -123,7 +123,7 @@ var renderListItem = function(file){
       $a.attr('data-timestamp', file.created)
       $a.append('<span class="state">' + moment(file.created).fromNow() + '</span>')
     }
-    $a.attr('href', scraperwiki.readSettings().target.url + '/http/' + file.filename)
+    $a.attr('href', scraperwiki.readSettings().source.url + '/http/' + file.filename)
   } else if(file.state == 'generating'){
     $a.addClass('generating')
     $a.append('<span class="state">Generating</span>')
@@ -146,6 +146,10 @@ var renderFiles = function(){
     renderListItem(file)
   })
   // $('p.controls').show()
+}
+
+var makeFilename = function(naughtyString){
+  return naughtyString.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9-_.]+/g, '')
 }
 
 var saveDatasetUrl = function(cb){

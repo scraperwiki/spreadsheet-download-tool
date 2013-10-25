@@ -12,6 +12,7 @@ from tempfile import mkstemp
 from datetime import datetime
 import os
 from os.path import join, abspath, dirname
+import re # for sanitising filenames
 import scraperwiki
 
 
@@ -38,14 +39,14 @@ class CsvOutput(object):
         self.writers[table_name].writerows(rows)
 
     def finalise_file(self, table_name):
-        replace_tempfile(self.tempfiles[table_name], "http/{}.csv".format(table_name))
+        replace_tempfile(self.tempfiles[table_name], "http/{}.csv".format(make_filename(table_name)))
         del self.tempfiles[table_name]
         del self.writers[table_name]
 
     # not used any more
     def finalise_all(self):
         for table_name, tempfile in self.tempfiles.items():
-            replace_tempfile(tempfile, "http/{}.csv".format(table_name))
+            replace_tempfile(tempfile, "http/{}.csv".format(make_filename(table_name)))
         self.tempfiles = {}
         self.writers = {}
 
@@ -111,24 +112,24 @@ def main():
     save_state('all_tables.xls', None, None, 'generating')
 
     for table in tables:
-        save_state('{}.csv'.format(table['name']), 'table', table['name'], 'generating')
+        save_state('{}.csv'.format(make_filename(table['name'])), 'table', table['name'], 'generating')
         csv_outputter.add_table(table['name'], table['columns'])
         xls_outputter.add_table(table['name'], table['columns'])
         for some_rows in get_paged_rows(box_url, table['name']):
             csv_outputter.write_rows(table['name'], some_rows)
             xls_outputter.write_rows(table['name'], some_rows)
         csv_outputter.finalise_file(table['name'])
-        save_state("{}.csv".format(table['name']), 'table', table['name'], 'generated')
+        save_state("{}.csv".format(make_filename(table['name'])), 'table', table['name'], 'generated')
 
     for grid in grids:
-        save_state('{}.csv'.format(grid['name']), 'grid', grid['name'], 'generating')
+        save_state('{}.csv'.format(make_filename(grid['name'])), 'grid', grid['name'], 'generating')
         csv_outputter.add_grid(grid['name'])
         xls_outputter.add_grid(grid['name'])
         grid_rows = get_grid_rows(grid['url'])
         csv_outputter.write_rows(grid['name'], grid_rows)
         xls_outputter.write_rows(grid['name'], grid_rows)
         csv_outputter.finalise_file(grid['name'])
-        save_state("{}.csv".format(grid['name']), 'grid', grid['name'], 'generated')
+        save_state("{}.csv".format(make_filename(grid['name'])), 'grid', grid['name'], 'generated')
 
     xls_outputter.finalise()
     save_state('all_tables.xls', None, None, 'generated')
@@ -251,6 +252,15 @@ def make_temp_file(suffix):
 
 def replace_tempfile(tmp, destination):
     os.rename(tmp, destination)
+
+
+def make_filename(naughty_string):
+    # if you change this function, make sure to
+    # also change the one in code.js
+    s = naughty_string.lower()
+    s = re.sub(r'\s+', '_', s)
+    s = re.sub(r'[^a-z0-9-_.]+', '', s)
+    return s
 
 
 try:
