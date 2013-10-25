@@ -97,3 +97,9 @@
     -webkit-transform: rotate(360deg);
   }
 }
+
+.alert pre {
+  margin-top: 10px;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(0,0,0,0.15);
+}

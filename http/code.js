@@ -5,7 +5,12 @@ window.issueTracker = 'https://github.com/scraperwiki/spreadsheet-download-tool/
 
 var reportAjaxError = function(jqXHR, textStatus, errorThrown, source){
   console.log(source + ' returned an ajax error:', jqXHR, textStatus, errorThrown)
-  scraperwiki.alert('There was a problem reading your dataset', 'The <code>' + source + '</code> function returned an ajax ' + textStatus + ' error. <a href="' + issueTracker + '" target="_blank">Click here to log this as a bug.</a>', true)
+  var message = 'The <code>' + source + '</code> function returned an ajax ' + textStatus + ' error.'
+  if(typeof jqXHR.responseText == 'string'){
+    var message += ' The response text was: <pre>' + $.trim(jqXHR.responseText) + '</pre>'
+  }
+  var message += '<a href="' + issueTracker + '" target="_blank">Click here to log this as a bug.</a>'
+  scraperwiki.alert('There was a problem reading your dataset', message, true)
 }
 
 var resetGlobalVariables = function(){
@@ -101,7 +106,7 @@ var updateFileList = function(cb){
       console.log('first run!')
       regenerate()
     } else {
-      console.log('updateFileList failed', jqXHR, textStatus, errorThrown)
+      reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.sql("SELECT filename, state, created FROM _state")')
     }
     cb()
   })
