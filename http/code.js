@@ -105,6 +105,13 @@ var updateFileList = function(cb){
     if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText)){
       console.log('first run!')
       regenerate()
+    } else if(/no such column/.test(jqXHR.responseText)){
+      // the database is in some unexpected state. We can't trust it. Clear all data and rebuild.
+      scraperwiki.tool.exec('tool/reset_everything.sh', function(){
+        window.location.reload()
+      }, function(jqXHR, textStatus, errorThrown){
+        reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("tool/reset_everything.sh")')
+      })
     } else {
       reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.sql("SELECT filename, state, created FROM _state")')
     }
@@ -190,7 +197,7 @@ var check_status = function(){
 
 var resetStatusDatabase = function(cb){
   scraperwiki.tool.exec('tool/reset_downloads.py', cb, function(jqXHR, textStatus, errorThrown){
-    reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("run-one tool/reset_downloads.py")')
+    reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("tool/reset_downloads.py")')
   })
 }
 
