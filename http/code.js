@@ -1,20 +1,19 @@
 window.timer = null
-window.tablesAndGrids = {
-  "tables": [],
-  "grids": []
-}
-window.files = [{
-  'filename': 'all_tables.xls',
-  'state': 'waiting',
-  'created': null,
-  'source_type': null,
-  'source_id': 'all_tables'
-}]
+window.tablesAndGrids = null
+window.files = null
 window.issueTracker = 'https://github.com/scraperwiki/spreadsheet-download-tool/issues'
 
 var reportAjaxError = function(jqXHR, textStatus, errorThrown, source){
   console.log(source + ' returned an ajax error:', jqXHR, textStatus, errorThrown)
   scraperwiki.alert('There was a problem reading your dataset', 'The <code>' + source + '</code> function returned an ajax ' + textStatus + ' error. <a href="' + issueTracker + '" target="_blank">Click here to log this as a bug.</a>', true)
+}
+
+var resetGlobalVariables = function(){
+  window.tablesAndGrids = {
+    "tables": [],
+    "grids": []
+  }
+  window.files = []
 }
 
 var getDatasetTablesAndGrids = function(cb){
@@ -71,6 +70,13 @@ var generateFileList = function(cb){
       'source_id': grid.id
     })
   })
+  window.files.push({
+    'filename': 'all_tables.xls',
+    'state': 'waiting',
+    'created': null,
+    'source_type': null,
+    'source_id': 'all_tables'
+  })
   updateFileList(cb)
 }
 
@@ -85,7 +91,7 @@ var updateFileList = function(cb){
     })
     cb()
   }).fail(function(jqXHR, textStatus, errorThrown){
-    if(/database file does not exist/.test(jqXHR.responseText)){
+    if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText)){
       console.log('first run!')
       regenerate()
     } else {
@@ -167,8 +173,33 @@ var check_status = function(){
   }
 }
 
+var resetStatusDatabase = function(cb){
+  scraperwiki.tool.exec('tool/reset_downloads.py', cb, function(jqXHR, textStatus, errorThrown){
+    reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("run-one tool/reset_downloads.py")')
+  })
+}
+
+var refresh_click = function(){
+  if($('#refresh').is('.refreshing')){
+    return false
+  }
+  $('#refresh').addClass('refreshing')
+  clearInterval(window.timer)
+  resetGlobalVariables()
+  resetStatusDatabase(function(){
+    getDatasetTablesAndGrids(function(){
+      generateFileList(function(){
+        $('#refresh').removeClass('refreshing')
+        renderFiles()
+        regenerate()
+      })
+    })
+  })
+}
 
 $(function(){
+
+  resetGlobalVariables()
 
   saveDatasetUrl()
 
@@ -178,6 +209,6 @@ $(function(){
     })
   })
 
-  $('#regenerate').on('click', regenerate)
+  $('#refresh').on('click', refresh_click)
 
 })

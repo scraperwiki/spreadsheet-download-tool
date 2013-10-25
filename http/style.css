@@ -1,4 +1,4 @@
-#files, #archives, p.controls, p.hints {
+#files, #archives, p.hints {
   width: 400px;
   margin: 20px auto;
 }
@@ -58,4 +58,42 @@
   float: right;
   color: #aaa;
   font-weight: 200;
+}
+
+#refresh {
+  display: block;
+  float: right;
+  width: 48px;
+  height: 48px;
+  background: transparent url(refresh.gif) 50% 50% no-repeat;
+  cursor: pointer;
+}
+
+.refreshing {
+  -moz-animation-duration: 1s;
+  -webkit-animation-duration: 1s;
+  -moz-animation-name: spin;
+  -webkit-animation-name: spin;
+  -moz-animation-iteration-count: infinite;
+  -webkit-animation-iteration-count: infinite;
+  -moz-animation-timing-function:linear;
+  -webkit-animation-timing-function:linear;
+}
+
+@-moz-keyframes spin {
+  from {
+    -moz-transform: rotate(0deg);
+  }
+  to {
+    -moz-transform: rotate(360deg);
+  }
+}
+
+@-webkit-keyframes spin {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+  to {
+    -webkit-transform: rotate(360deg);
+  }
 }
