@@ -28,12 +28,15 @@ var getDatasetTablesAndGrids = function(cb){
       scraperwiki.alert('Your dataset has no tables', 'This shouldn&rsquo;t really be an error. We should handle this more gracefully.')
       cb(window.tablesAndGrids)
     } else {
+      // add tables to window.tablesAndGrids
       $.each(meta.table, function(table_name, table_meta){
+        // ignore tables beginning with an underscore
         if(table_name.indexOf('_') != 0){
           window.tablesAndGrids.tables.push({"id": table_name, "name": table_name})
         }
       })
       if('_grids' in meta.table){
+        // add grids to window.tablesAndGrids
         scraperwiki.dataset.sql('SELECT * FROM _grids').fail(function(jqXHR, textStatus, errorThrown){
           reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql()')
           cb(window.tablesAndGrids)
@@ -43,6 +46,9 @@ var getDatasetTablesAndGrids = function(cb){
           })
           cb(window.tablesAndGrids)
         })
+      } else {
+        // no grids: ust return what we've got
+        cb(window.tablesAndGrids)
       }
     }
   })
