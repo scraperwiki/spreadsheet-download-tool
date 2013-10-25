@@ -7,9 +7,9 @@ var reportAjaxError = function(jqXHR, textStatus, errorThrown, source){
   console.log(source + ' returned an ajax error:', jqXHR, textStatus, errorThrown)
   var message = 'The <code>' + source + '</code> function returned an ajax ' + textStatus + ' error.'
   if(typeof jqXHR.responseText == 'string'){
-    var message += ' The response text was: <pre>' + $.trim(jqXHR.responseText) + '</pre>'
+    message += ' The response text was: <pre>' + $.trim(jqXHR.responseText) + '</pre>'
   }
-  var message += '<a href="' + issueTracker + '" target="_blank">Click here to log this as a bug.</a>'
+  message += '<a href="' + issueTracker + '" target="_blank">Click here to log this as a bug.</a>'
   scraperwiki.alert('There was a problem reading your dataset', message, true)
 }
 
