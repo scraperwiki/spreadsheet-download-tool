@@ -1,6 +1,3 @@
-window.timer = null
-window.tablesAndGrids = null
-window.files = null
 window.issueTracker = 'https://github.com/scraperwiki/spreadsheet-download-tool/issues'
 
 var reportAjaxError = function(jqXHR, textStatus, errorThrown, source){
@@ -19,20 +16,24 @@ var resetGlobalVariables = function(){
     "grids": []
   }
   window.files = []
+  window.timer = null
 }
 
 var getDatasetTablesAndGrids = function(cb){
   // calls the `cb` callback with an object containing
   // lists of tables and grids in the parent dataset
   // eg: {"tables": [{"id":"_grids", "name":"_grids"}], "grids": [...]}
+  console.log('getDatasetTablesAndGrids()')
   scraperwiki.dataset.sql.meta().fail(function(jqXHR, textStatus, errorThrown){
     reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql.meta()')
     cb(window.tablesAndGrids)
   }).done(function(meta){
     if(meta.table.length == 0){
+      console.log('getDatasetTablesAndGrids() ... meta.table.length == 0')
       scraperwiki.alert('Your dataset has no tables', 'This shouldn&rsquo;t really be an error. We should handle this more gracefully.')
       cb(window.tablesAndGrids)
     } else {
+      console.log('getDatasetTablesAndGrids() ... found', _.keys(meta.table).length, 'tables:', _.keys(meta.table).join(', '))
       // add tables to window.tablesAndGrids
       $.each(meta.table, function(table_name, table_meta){
         // ignore tables beginning with an underscore
@@ -42,10 +43,12 @@ var getDatasetTablesAndGrids = function(cb){
       })
       if('_grids' in meta.table){
         // add grids to window.tablesAndGrids
+        console.log('getDatasetTablesAndGrids() ... found _grids table')
         scraperwiki.dataset.sql('SELECT * FROM _grids').fail(function(jqXHR, textStatus, errorThrown){
           reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql()')
           cb(window.tablesAndGrids)
         }).done(function(grids){
+          console.log('getDatasetTablesAndGrids() ... found', grids.length, 'grids')
           $.each(grids, function(i, grid){
             window.tablesAndGrids.grids.push({"id": grid.checksum, "name": grid.title})
           })
@@ -53,6 +56,7 @@ var getDatasetTablesAndGrids = function(cb){
         })
       } else {
         // no grids: ust return what we've got
+        console.log('getDatasetTablesAndGrids() ... no _grids table')
         cb(window.tablesAndGrids)
       }
     }
@@ -63,6 +67,7 @@ var generateFileList = function(cb){
   // given a load of sources in window.tablesAndGrids, and
   // information from the _state SQL table, this function
   // contructs a list of files generated / to be generated
+  console.log('generateFileList() from', window.tablesAndGrids.tables.length, 'tables and', window.tablesAndGrids.grids.length, 'grids')
   $.each(window.tablesAndGrids.tables, function(i, table){
     window.files.push({
       'filename': makeFilename(table.name) + '.csv',
@@ -92,7 +97,9 @@ var generateFileList = function(cb){
 }
 
 var updateFileList = function(cb){
+  console.log('updateFileList() called')
   scraperwiki.tool.sql('SELECT filename, state, created FROM _state').done(function(files){
+    console.log('updateFileList() got files')
     $.each(files, function(i, file){
       fileRecordToUpdate = _.findWhere(window.files, {'filename':file.filename})
       if(typeof fileRecordToUpdate !== 'undefined'){
@@ -100,13 +107,23 @@ var updateFileList = function(cb){
         fileRecordToUpdate.created = file.created
       }
     })
-    cb()
+    cb() // this callback is usually renderFiles()
   }).fail(function(jqXHR, textStatus, errorThrown){
+    console.log('updateFileList() ajax error', jqXHR.responseText, textStatus, errorThrown)
     if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText)){
-      console.log('first run!')
-      regenerate()
+      console.log('updateFileList() ... database or table does not exist')
+      // kick off regeneration if we're not already running
+      if(window.timer === null){
+        console.log('updateFileList() ... looks like first run ... kicking off regenerate()')
+        regenerate()
+      } else {
+        console.log('updateFileList() ... we\'re already running regenerate(), so let\'s just wait')
+      }
+      cb() // this callback is usually renderFiles()
     } else if(/no such column/.test(jqXHR.responseText)){
       // the database is in some unexpected state. We can't trust it. Clear all data and rebuild.
+      console.log('updateFileList() ... unexpected database state (missing column)')
+      console.log('running scraperwiki.tool.exec("tool/reset_everything.sh")')
       scraperwiki.tool.exec('tool/reset_everything.sh', function(){
         window.location.reload()
       }, function(jqXHR, textStatus, errorThrown){
@@ -115,7 +132,6 @@ var updateFileList = function(cb){
     } else {
       reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.sql("SELECT filename, state, created FROM _state")')
     }
-    cb()
   })
 }
 
@@ -160,6 +176,7 @@ var renderListItem = function(file){
 }
 
 var renderFiles = function(){
+  console.log('renderFiles()')
   $.each(window.files, function(i, file){
     renderListItem(file)
   })
@@ -171,6 +188,7 @@ var makeFilename = function(naughtyString){
 }
 
 var saveDatasetUrl = function(cb){
+  console.log('saveDatasetUrl()')
   scraperwiki.tool.exec('echo "' + scraperwiki.readSettings().target.url + '" > ~/dataset_url.txt')
   if(typeof cb != 'undefined'){
     cb()
@@ -178,24 +196,30 @@ var saveDatasetUrl = function(cb){
 }
 
 var regenerate = function(){
+  console.log('regenerate()')
   scraperwiki.tool.exec('echo "started"; run-one tool/create_downloads.py &> log.txt &')
-  window.timer = setInterval(check_status, 2000)
+  console.log('setting window.timer interval for checkStatus()')
+  window.timer = setInterval(checkStatus, 2000)
 }
 
-var check_status = function(){
+var checkStatus = function(){
+  console.log('checkStatus()')
   var unfinishedFiles = _.reject(window.files, function(file){
     return file.state == 'generated'
   })
   if(unfinishedFiles.length){
+    console.log(unfinishedFiles.length, 'unfinished files ... running updateFileList()')
     // some files are still outstanding, so check _state database for updates
     updateFileList(renderFiles)
   } else {
+    console.log('no unfinished files ... running renderFiles()')
     // no files outstanding, don't bother checking _state database
     renderFiles()
   }
 }
 
 var resetStatusDatabase = function(cb){
+  console.log('resetStatusDatabase()')
   scraperwiki.tool.exec('tool/reset_downloads.py', cb, function(jqXHR, textStatus, errorThrown){
     reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("tool/reset_downloads.py")')
   })
