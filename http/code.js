@@ -113,12 +113,8 @@ var updateFileList = function(cb){
     if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText) || /no such column/.test(jqXHR.responseText)){
       console.log('updateFileList() ... database or table does not exist')
       // kick off regeneration if we're not already running
-      if(window.timer === null){
-        console.log('updateFileList() ... looks like first run ... kicking off regenerate()')
-        regenerate()
-      } else {
-        console.log('updateFileList() ... we\'re already running regenerate(), so let\'s just wait')
-      }
+      console.log('updateFileList() ... kicking off regenerate()')
+      regenerate()
       cb() // this callback is usually renderFiles()
     } else {
       reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.sql("SELECT filename, state, created FROM _state_files")')
@@ -189,8 +185,13 @@ var saveDatasetUrl = function(cb){
 var regenerate = function(){
   console.log('regenerate()')
   scraperwiki.tool.exec('echo "started"; run-one tool/create_downloads.py &> log.txt &')
+}
+
+var setTimer = function() {
   console.log('setting window.timer interval for checkStatus()')
-  window.timer = setInterval(checkStatus, 2000)
+  if(window.timer === null){
+    window.timer = setInterval(checkStatus, 2000)
+  }
 }
 
 var checkStatus = function(){
@@ -221,7 +222,6 @@ var refresh_click = function(){
     return false
   }
   $('#refresh').addClass('refreshing')
-  clearInterval(window.timer)
   resetGlobalVariables()
   resetStatusDatabase(function(){
     getDatasetTablesAndGrids(function(){
@@ -243,6 +243,7 @@ $(function(){
   getDatasetTablesAndGrids(function(){
     generateFileList(function(){
       renderFiles()
+      setTimer()
     })
   })
 
