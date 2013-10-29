@@ -200,11 +200,11 @@ var checkStatus = function(){
   })
   if(unfinishedFiles.length){
     console.log(unfinishedFiles.length, 'unfinished files ... running updateFileList()')
-    // some files are still outstanding, so check _state database for updates
+    // some files are still outstanding, so check _state_files database for updates
     updateFileList(renderFiles)
   } else {
     console.log('no unfinished files ... running renderFiles()')
-    // no files outstanding, don't bother checking _state database
+    // no files outstanding, don't bother checking _state_files database
     renderFiles()
   }
 }
