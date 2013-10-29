@@ -110,7 +110,7 @@ var updateFileList = function(cb){
     cb() // this callback is usually renderFiles()
   }).fail(function(jqXHR, textStatus, errorThrown){
     console.log('updateFileList() ajax error', jqXHR.responseText, textStatus, errorThrown)
-    if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText)){
+    if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText) || /no such column/.test(jqXHR.responseText)){
       console.log('updateFileList() ... database or table does not exist')
       // kick off regeneration if we're not already running
       if(window.timer === null){
@@ -120,15 +120,6 @@ var updateFileList = function(cb){
         console.log('updateFileList() ... we\'re already running regenerate(), so let\'s just wait')
       }
       cb() // this callback is usually renderFiles()
-    } else if(/no such column/.test(jqXHR.responseText)){
-      // the database is in some unexpected state. We can't trust it. Clear all data and rebuild.
-      console.log('updateFileList() ... unexpected database state (missing column)')
-      console.log('running scraperwiki.tool.exec("tool/reset_everything.sh")')
-      scraperwiki.tool.exec('tool/reset_everything.sh', function(){
-        window.location.reload()
-      }, function(jqXHR, textStatus, errorThrown){
-        reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("tool/reset_everything.sh")')
-      })
     } else {
       reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.sql("SELECT filename, state, created FROM _state")')
     }
