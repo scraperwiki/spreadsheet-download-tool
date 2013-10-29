@@ -65,7 +65,7 @@ var getDatasetTablesAndGrids = function(cb){
 
 var generateFileList = function(cb){
   // given a load of sources in window.tablesAndGrids, and
-  // information from the _state SQL table, this function
+  // information from the _state_files SQL table, this function
   // contructs a list of files generated / to be generated
   console.log('generateFileList() from', window.tablesAndGrids.tables.length, 'tables and', window.tablesAndGrids.grids.length, 'grids')
   $.each(window.tablesAndGrids.tables, function(i, table){
@@ -98,7 +98,7 @@ var generateFileList = function(cb){
 
 var updateFileList = function(cb){
   console.log('updateFileList() called')
-  scraperwiki.tool.sql('SELECT filename, state, created FROM _state').done(function(files){
+  scraperwiki.tool.sql('SELECT filename, state, created FROM _state_files').done(function(files){
     console.log('updateFileList() got files')
     $.each(files, function(i, file){
       fileRecordToUpdate = _.findWhere(window.files, {'filename':file.filename})
@@ -121,7 +121,7 @@ var updateFileList = function(cb){
       }
       cb() // this callback is usually renderFiles()
     } else {
-      reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.sql("SELECT filename, state, created FROM _state")')
+      reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.sql("SELECT filename, state, created FROM _state_files")')
     }
   })
 }

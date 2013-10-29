@@ -232,7 +232,7 @@ def save_state(filename, source_type, source_id, state):
             'created': None,
             'source_type': source_type,
             'source_id': source_id
-        }, '_state')
+        }, '_state_files')
     elif state == 'generated':
         scraperwiki.sql.save(['filename'], {
             'filename': filename,
@@ -240,7 +240,7 @@ def save_state(filename, source_type, source_id, state):
             'created': '{}+00:00'.format(datetime.now().isoformat()),
             'source_type': source_type,
             'source_id': source_id
-        }, '_state')
+        }, '_state_files')
     else:
         raise Exception("Unknown status: %s" % state)
 
