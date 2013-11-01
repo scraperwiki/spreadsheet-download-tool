@@ -101,6 +101,7 @@ class CsvOutput(object):
             return
 
         os.rename(self.tempfile.name, self.path)
+        os.chmod(self.path, 0644)
 
     def write_rows(self, rows):
         self.writer.writerows(rows)
@@ -128,6 +129,7 @@ class ExcelOutput(object):
                 raise
             else:
                 os.rename(tempfile.name, self.path)
+                os.chmod(self.path, 0644)
 
     def add_sheet(self, sheet_name, table):
         sheet = self.workbook.add_sheet(sheet_name)
@@ -335,12 +337,6 @@ def save_state(filename, source_type, source_id, state):
         'source_type': source_type,
         'source_id': source_id
     }, '_state_files')
-
-
-def make_temp_file(suffix):
-    (_, filename) = mkstemp(suffix=suffix, dir='http')
-    os.chmod(filename, 0644)  # world-readable
-    return filename
 
 
 def make_filename(naughty_string):
