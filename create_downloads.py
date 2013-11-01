@@ -1,23 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import requests  # requires Python requests 1.x
-import xlwt
-import unicodecsv
-import traceback  # for formatting exceptions
-import json  # for decoding API responses
-import collections  # for parsing JSON as ordereddicts
-import lxml.html  # for parsing "grid" HTML tables
-from datetime import datetime
-from tempfile import mkstemp
+import collections
+import json
 import os
-from os.path import join, abspath, dirname
-import re  # for sanitising filenames
-import scraperwiki
+import re
+import traceback
 
 from itertools import product
+from datetime import datetime
+from tempfile import mkstemp
+from os.path import join, abspath, dirname
 
-PAGE_SIZE = 5000  # how many rows to request from the SQL API at any one time
+import lxml.html
+import requests
+import unicodecsv
+import xlwt
+
+import scraperwiki
+
+# how many rows to request from the SQL API at any one time
+PAGE_SIZE = 5000
 
 
 def get_cell_span_content(cell):
