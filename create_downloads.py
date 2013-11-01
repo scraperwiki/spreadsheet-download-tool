@@ -9,7 +9,7 @@ import traceback
 
 from itertools import product
 from datetime import datetime
-from tempfile import mkstemp
+from tempfile import NamedTemporaryFile
 from os.path import join, abspath, dirname
 
 import lxml.html
@@ -83,47 +83,57 @@ def make_plain_table(table):
 
 class CsvOutput(object):
 
-    def __init__(self):
-        self.tempfiles = {}
-        self.writers = {}
+    def __init__(self, path):
+        self.path = path
+        self.tempfile = NamedTemporaryFile(dir=".", delete=False)
+        self.writer = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.tempfile.close()
+
+        if exc_type is not None:
+            os.unlink(self.tempfile.name)
+            return
+
+        os.rename(self.tempfile.name, self.path)
 
     def add_table(self, table_name, column_names):
-        self.tempfiles[table_name] = make_temp_file('.csv')
-        f = open(self.tempfiles[table_name], 'w')
-        self.writers[table_name] = unicodecsv.DictWriter(f, column_names)
-        self.writers[table_name].writeheader()
+        self.writer = unicodecsv.DictWriter(self.tempfile, column_names)
+        self.writer.writeheader()
 
     def add_grid(self, grid_name):
-        self.tempfiles[grid_name] = make_temp_file('.csv')
-        f = open(self.tempfiles[grid_name], 'w')
-        self.writers[grid_name] = unicodecsv.writer(f, encoding='utf-8')
+        self.writer = unicodecsv.writer(self.tempfile, encoding='utf-8')
 
     def write_rows(self, table_name, rows):
         plain_rows = make_plain_table(rows)
-        self.writers[table_name].writerows(plain_rows)
-
-    def finalise_file(self, table_name):
-        replace_tempfile(self.tempfiles[table_name],
-                         "http/{}.csv".format(make_filename(table_name)))
-        del self.tempfiles[table_name]
-        del self.writers[table_name]
-
-    # not used any more
-    def finalise_all(self):
-        for table_name, tempfile in self.tempfiles.items():
-            replace_tempfile(
-                tempfile, "http/{}.csv".format(make_filename(table_name)))
-        self.tempfiles = {}
-        self.writers = {}
+        self.writer.writerows(plain_rows)
 
 
 class ExcelOutput(object):
 
-    def __init__(self):
+    def __init__(self, path):
         self.workbook = xlwt.Workbook(encoding="utf-8")
-        self.name = 'all_tables.xls'
+        self.path = path
         self.sheets = {}
-        self.fail = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            return
+
+        with NamedTemporaryFile(dir=".", delete=False) as tempfile:
+            try:
+                self.workbook.save(tempfile.name)
+            except:
+                os.unlink(tempfile.name)
+                raise
+            else:
+                os.rename(tempfile.name, self.path)
 
     def add_table(self, table_name, column_names):
         self.sheets[table_name] = self.workbook.add_sheet(table_name)
@@ -149,16 +159,6 @@ class ExcelOutput(object):
                                       i, i + colspan - 1,
                                       content)
 
-    def finalise(self):
-        output_name = 'http/{}'.format(self.name)
-        if self.fail:
-            save_state(self.name, None, None, 'failed')
-            os.path.exists(output_name) and os.remove(output_name)
-            return
-        tempfile = make_temp_file('.xls')
-        self.workbook.save(tempfile)
-        replace_tempfile(tempfile, output_name)
-
 
 def main():
     log('# {} creating downloads:'.format(datetime.now().isoformat()))
@@ -167,51 +167,54 @@ def main():
 
 
 def generate_for_box(box_url):
-    tables = get_dataset_tables(box_url)
-    grids = get_dataset_grids(box_url)
-    dump_tables_grids(box_url, tables, grids)
-
-
-def dump_tables_grids(box_url, tables, grids):
-    csv_outputter = CsvOutput()
-    xls_outputter = ExcelOutput()
 
     save_state('all_tables.xls', None, None, 'generating')
+
+    with ExcelOutput("http/all_tables.xls") as excel_output:
+        tables = get_dataset_tables(box_url)
+        dump_tables(box_url, excel_output, tables)
+
+        grids = get_dataset_grids(box_url)
+        dump_grids(excel_output, grids)
+
+    save_state('all_tables.xls', None, None, 'generated')
+
+
+def dump_tables(box_url, excel_output, tables):
 
     for table in tables:
         filename = '{}.csv'.format(make_filename(table['name']))
         save_state(filename, 'table', table['name'], 'generating')
 
-        csv_outputter.add_table(table['name'], table['columns'])
-        xls_outputter.add_table(table['name'], table['columns'])
+        with CsvOutput(filename) as csv_output:
 
-        for some_rows in get_paged_rows(box_url, table['name']):
-            csv_outputter.write_rows(table['name'], some_rows)
-            xls_outputter.write_rows(table['name'], some_rows)
+            for some_rows in get_paged_rows(box_url, table['name']):
 
-        csv_outputter.finalise_file(table['name'])
+                csv_output.add_table(table['name'], table['columns'])
+                csv_output.write_rows(table['name'], some_rows)
+
+                excel_output.add_table(table['name'], table['columns'])
+                excel_output.write_rows(table['name'], some_rows)
 
         save_state(filename, 'table', table['name'], 'generated')
+
+
+def dump_grids(excel_output, grids):
 
     for grid in grids:
         filename = '{}.csv'.format(make_filename(grid['name']))
         save_state(filename, 'grid', grid['name'], 'generating')
 
-        csv_outputter.add_grid(grid['name'])
-        xls_outputter.add_grid(grid['name'])
+        with CsvOutput(filename) as csv_output:
+            rows = get_grid_rows(grid['url'])
 
-        grid_rows = get_grid_rows(grid['url'])
+            csv_output.add_grid(grid['name'])
+            csv_output.write_rows(grid['name'], rows)
 
-        csv_outputter.write_rows(grid['name'], grid_rows)
-        xls_outputter.write_rows(grid['name'], grid_rows)
-
-        csv_outputter.finalise_file(grid['name'])
+            excel_output.add_grid(grid['name'])
+            excel_output.write_rows(grid['name'], rows)
 
         save_state(filename, 'grid', grid['name'], 'generated')
-
-    xls_outputter.finalise()
-
-    save_state('all_tables.xls', None, None, 'generated')
 
 
 def get_dataset_tables(box_url):
@@ -330,10 +333,6 @@ def make_temp_file(suffix):
     (_, filename) = mkstemp(suffix=suffix, dir='http')
     os.chmod(filename, 0644)  # world-readable
     return filename
-
-
-def replace_tempfile(tmp, destination):
-    os.rename(tmp, destination)
 
 
 def make_filename(naughty_string):
