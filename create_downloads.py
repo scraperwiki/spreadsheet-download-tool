@@ -108,9 +108,16 @@ class ExcelOutput(object):
 def main():
     log('# {} creating downloads:'.format(datetime.now().isoformat()))
     box_url = get_box_url()
+    generate_for_box(box_url)
+
+
+def generate_for_box(box_url):
     tables = get_dataset_tables(box_url)
     grids = get_dataset_grids(box_url)
+    dump_tables_grids(box_url, tables, grids)
 
+
+def dump_tables_grids(box_url, tables, grids):
     csv_outputter = CsvOutput()
     xls_outputter = ExcelOutput()
 
@@ -118,11 +125,12 @@ def main():
 
     for table in tables:
         save_state('{}.csv'.format(
-            make_filename(table['name'])),
-            'table', table['name'], 'generating')
+                   make_filename(table['name'])),
+                   'table', table['name'], 'generating')
 
         csv_outputter.add_table(table['name'], table['columns'])
         xls_outputter.add_table(table['name'], table['columns'])
+
         for some_rows in get_paged_rows(box_url, table['name']):
             csv_outputter.write_rows(table['name'], some_rows)
             xls_outputter.write_rows(table['name'], some_rows)
@@ -138,14 +146,19 @@ def main():
 
         csv_outputter.add_grid(grid['name'])
         xls_outputter.add_grid(grid['name'])
+
         grid_rows = get_grid_rows(grid['url'])
+
         csv_outputter.write_rows(grid['name'], grid_rows)
         xls_outputter.write_rows(grid['name'], grid_rows)
+
         csv_outputter.finalise_file(grid['name'])
+
         save_state("{}.csv".format(make_filename(grid['name'])),
                    'grid', grid['name'], 'generated')
 
     xls_outputter.finalise()
+
     save_state('all_tables.xls', None, None, 'generated')
 
 
@@ -175,6 +188,7 @@ def get_dataset_grids(box_url):
     except Exception as e:
         log('could not get _grids:')
         log(e)
+
     return grids
 
 
