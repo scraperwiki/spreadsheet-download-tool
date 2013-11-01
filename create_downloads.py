@@ -8,15 +8,74 @@ import traceback  # for formatting exceptions
 import json  # for decoding API responses
 import collections  # for parsing JSON as ordereddicts
 import lxml.html  # for parsing "grid" HTML tables
-from tempfile import mkstemp
 from datetime import datetime
+from tempfile import mkstemp
 import os
 from os.path import join, abspath, dirname
 import re  # for sanitising filenames
 import scraperwiki
 
+from itertools import product
 
 PAGE_SIZE = 5000  # how many rows to request from the SQL API at any one time
+
+
+def get_cell_span_content(cell):
+    """
+    Return the content and spanning of ``cell``, which may be a string or a
+    lxml HTML <td>
+    """
+    if isinstance(cell, basestring):
+        rowspan, colspan = 1, 1
+        content = cell
+    else:
+        assert isinstance(cell, lxml.html.HtmlElement)
+        colspan = int(cell.attrib.get("colspan", 1))
+        rowspan = int(cell.attrib.get("rowspan", 1))
+        content = cell.text_content()
+    return (rowspan, colspan), content
+
+
+def make_plain_table(table):
+    """
+    Given a table just containing strings, return it.
+
+    If the table contains HTML td colspan elements, fill all spanned cells with
+    its content.
+    """
+    if all(isinstance(cell, basestring) for row in table for cell in row):
+        # No transformation needed
+        return table
+
+    # If we get here, table contains lxml.html.HtmlElement which may be
+    # colspanned. Undo the colspanning.
+
+    result_table = []
+
+    def insert(j, i, content):
+        n_missing_rows = j - len(result_table) + 1
+        if n_missing_rows > 0:
+            result_table.extend(list() for _ in xrange(n_missing_rows))
+
+        row = result_table[j]
+        n_missing_cells = i - len(row) + 1
+        if n_missing_cells > 0:
+            row.extend("" for _ in xrange(n_missing_cells))
+
+        row[i] = content
+
+    for j, row in enumerate(table):
+        for i, cell in enumerate(row):
+            (rowspan, colspan), content = get_cell_span_content(cell)
+
+            if colspan == rowspan == 1:
+                insert(j, i, content)
+                continue
+
+            for y, x in product(xrange(rowspan), xrange(colspan)):
+                insert(j + y, i + x, content)
+
+    return result_table
 
 
 class CsvOutput(object):
@@ -37,7 +96,8 @@ class CsvOutput(object):
         self.writers[grid_name] = unicodecsv.writer(f, encoding='utf-8')
 
     def write_rows(self, table_name, rows):
-        self.writers[table_name].writerows(rows)
+        plain_rows = make_plain_table(rows)
+        self.writers[table_name].writerows(plain_rows)
 
     def finalise_file(self, table_name):
         replace_tempfile(self.tempfiles[table_name],
@@ -74,25 +134,18 @@ class ExcelOutput(object):
         self.current_rows[grid_name] = 0
 
     def write_rows(self, table_name, rows):
-        for row in rows:
-            self.write_row(table_name, row)
 
-    def write_row(self, table_name, row):
-        if self.fail:
-            return
-        if hasattr(row, "values") and callable(row.values):
-            row_values = row.values()
-        else:
-            row_values = row
-        for col_number, cell_value in enumerate(row_values):
-            try:
-                self.sheets[table_name].write(
-                    self.current_rows[table_name],
-                    col_number,
-                    cell_value)
-            except ValueError:
-                self.fail = True
-        self.current_rows[table_name] += 1
+        write_cell = self.sheets[table_name].write
+        write_cell_merged = self.sheets[table_name].write_merge
+
+        for j, row in enumerate(rows):
+            for i, cell in enumerate(row):
+                (rowspan, colspan), content = get_cell_span_content(cell)
+
+                if colspan == rowspan == 1:
+                    write_cell(j, i, content)
+                else:
+                    write_cell_merged(j, j+rowspan-1, i, i+colspan-1, content)
 
     def finalise(self):
         output_name = 'http/{}'.format(self.name)
@@ -244,9 +297,11 @@ def get_grid_rows(grid_url):
     data = []
     for tr in table.cssselect('tr'):
         row = []
-        for td in tr.cssselect('td'):
-            row.append(td.text_content())
         data.append(row)
+
+        for td in tr.cssselect('td'):
+            row.append(td)
+
     return data
 
 
