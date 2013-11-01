@@ -123,18 +123,15 @@ class ExcelOutput(object):
         self.workbook = xlwt.Workbook(encoding="utf-8")
         self.name = 'all_tables.xls'
         self.sheets = {}
-        self.current_rows = {}
         self.fail = False
 
     def add_table(self, table_name, column_names):
         self.sheets[table_name] = self.workbook.add_sheet(table_name)
         for col_number, value in enumerate(column_names):
             self.sheets[table_name].write(0, col_number, value)
-        self.current_rows[table_name] = 1
 
     def add_grid(self, grid_name):
         self.sheets[grid_name] = self.workbook.add_sheet(grid_name)
-        self.current_rows[grid_name] = 0
 
     def write_rows(self, table_name, rows):
 
@@ -295,6 +292,7 @@ def get_paged_rows(box_url, table_name):
 def get_grid_rows(grid_url):
     response = requests.get(grid_url)
     log("GET %s" % response.url)
+
     dom = lxml.html.fromstring(response.text)
     table = dom.cssselect('table')[0]
 
