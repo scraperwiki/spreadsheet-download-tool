@@ -44,7 +44,7 @@ def make_plain_table(table):
     Given a table just containing strings, return it.
 
     If the table contains HTML td colspan elements, fill all spanned cells with
-    its content.
+    its content to make the resulting table rectangular.
     """
     if all(isinstance(cell, basestring) for row in table for cell in row):
         # No transformation needed
@@ -148,7 +148,9 @@ class ExcelOutput(object):
                 if colspan == rowspan == 1:
                     write_cell(j, i, content)
                 else:
-                    write_cell_merged(j, j+rowspan-1, i, i+colspan-1, content)
+                    write_cell_merged(j, j + rowspan - 1,
+                                      i, i + colspan - 1,
+                                      content)
 
     def finalise(self):
         output_name = 'http/{}'.format(self.name)
@@ -180,9 +182,8 @@ def dump_tables_grids(box_url, tables, grids):
     save_state('all_tables.xls', None, None, 'generating')
 
     for table in tables:
-        save_state('{}.csv'.format(
-                   make_filename(table['name'])),
-                   'table', table['name'], 'generating')
+        filename = '{}.csv'.format(make_filename(table['name']))
+        save_state(filename, 'table', table['name'], 'generating')
 
         csv_outputter.add_table(table['name'], table['columns'])
         xls_outputter.add_table(table['name'], table['columns'])
@@ -193,12 +194,11 @@ def dump_tables_grids(box_url, tables, grids):
 
         csv_outputter.finalise_file(table['name'])
 
-        save_state("{}.csv".format(make_filename(table['name'])),
-                   'table', table['name'], 'generated')
+        save_state(filename, 'table', table['name'], 'generated')
 
     for grid in grids:
-        save_state('{}.csv'.format(make_filename(grid['name'])),
-                   'grid', grid['name'], 'generating')
+        filename = '{}.csv'.format(make_filename(grid['name']))
+        save_state(filename, 'grid', grid['name'], 'generating')
 
         csv_outputter.add_grid(grid['name'])
         xls_outputter.add_grid(grid['name'])
@@ -210,8 +210,7 @@ def dump_tables_grids(box_url, tables, grids):
 
         csv_outputter.finalise_file(grid['name'])
 
-        save_state("{}.csv".format(make_filename(grid['name'])),
-                   'grid', grid['name'], 'generated')
+        save_state(filename, 'grid', grid['name'], 'generated')
 
     xls_outputter.finalise()
 
@@ -221,6 +220,7 @@ def dump_tables_grids(box_url, tables, grids):
 def get_dataset_tables(box_url):
     tables = []
     database_meta = get_database_meta(box_url)
+
     for table_name, table_meta in database_meta['table'].items():
         if not table_name.startswith('_'):
             tables.append({
@@ -228,6 +228,7 @@ def get_dataset_tables(box_url):
                 'name': table_name,
                 'columns': table_meta['columnNames']
             })
+
     return tables
 
 
@@ -310,24 +311,21 @@ def get_grid_rows(grid_url):
 
 def save_state(filename, source_type, source_id, state):
     log("%s %s" % (filename, state))
-    if state in ['generating', 'waiting', 'failed']:
-        scraperwiki.sql.save(['filename'], {
-            'filename': filename,
-            'state': state,
-            'created': None,
-            'source_type': source_type,
-            'source_id': source_id
-        }, '_state_files')
-    elif state == 'generated':
-        scraperwiki.sql.save(['filename'], {
-            'filename': filename,
-            'state': 'generated',
-            'created': '{}+00:00'.format(datetime.now().isoformat()),
-            'source_type': source_type,
-            'source_id': source_id
-        }, '_state_files')
-    else:
-        raise Exception("Unknown status: %s" % state)
+
+    created = None
+    if state == 'generated':
+        created = '{}+00:00'.format(datetime.now().isoformat())
+
+    if state not in ['generating', 'waiting', 'failed', 'generated']:
+        raise Exception("Unknown status: {0}".format(state))
+
+    scraperwiki.sql.save(['filename'], {
+        'filename': filename,
+        'state': state,
+        'created': created,
+        'source_type': source_type,
+        'source_id': source_id
+    }, '_state_files')
 
 
 def make_temp_file(suffix):
