@@ -7,10 +7,10 @@ import os
 import re
 import traceback
 
-from itertools import product
+from itertools import chain, izip, product
 from datetime import datetime
 from tempfile import NamedTemporaryFile
-from os.path import join, abspath, dirname
+from os.path import abspath, dirname, join
 
 import lxml.html
 import requests
@@ -22,20 +22,22 @@ import scraperwiki
 # how many rows to request from the SQL API at any one time
 PAGE_SIZE = 5000
 
+# where to put the resulting output files
+DESTINATION = "./http"
+
 
 def get_cell_span_content(cell):
     """
     Return the content and spanning of ``cell``, which may be a string or a
     lxml HTML <td>
     """
-    if isinstance(cell, basestring):
-        rowspan, colspan = 1, 1
-        content = cell
-    else:
-        assert isinstance(cell, lxml.html.HtmlElement)
+    if isinstance(cell, lxml.html.HtmlElement):
         colspan = int(cell.attrib.get("colspan", 1))
         rowspan = int(cell.attrib.get("rowspan", 1))
         content = cell.text_content()
+    else:
+        rowspan, colspan = 1, 1
+        content = cell
     return (rowspan, colspan), content
 
 
@@ -85,8 +87,8 @@ class CsvOutput(object):
 
     def __init__(self, path):
         self.path = path
-        self.tempfile = NamedTemporaryFile(dir=".", delete=False)
-        self.writer = None
+        self.tempfile = NamedTemporaryFile(dir=dirname(path), delete=False)
+        self.writer = unicodecsv.writer(self.tempfile, encoding='utf-8')
 
     def __enter__(self):
         return self
@@ -100,16 +102,8 @@ class CsvOutput(object):
 
         os.rename(self.tempfile.name, self.path)
 
-    def add_table(self, table_name, column_names):
-        self.writer = unicodecsv.DictWriter(self.tempfile, column_names)
-        self.writer.writeheader()
-
-    def add_grid(self, grid_name):
-        self.writer = unicodecsv.writer(self.tempfile, encoding='utf-8')
-
-    def write_rows(self, table_name, rows):
-        plain_rows = make_plain_table(rows)
-        self.writer.writerows(plain_rows)
+    def write_rows(self, rows):
+        self.writer.writerows(rows)
 
 
 class ExcelOutput(object):
@@ -117,7 +111,6 @@ class ExcelOutput(object):
     def __init__(self, path):
         self.workbook = xlwt.Workbook(encoding="utf-8")
         self.path = path
-        self.sheets = {}
 
     def __enter__(self):
         return self
@@ -126,7 +119,8 @@ class ExcelOutput(object):
         if exc_type is not None:
             return
 
-        with NamedTemporaryFile(dir=".", delete=False) as tempfile:
+        basepath = dirname(self.path)
+        with NamedTemporaryFile(dir=basepath, delete=False) as tempfile:
             try:
                 self.workbook.save(tempfile.name)
             except:
@@ -135,27 +129,17 @@ class ExcelOutput(object):
             else:
                 os.rename(tempfile.name, self.path)
 
-    def add_table(self, table_name, column_names):
-        self.sheets[table_name] = self.workbook.add_sheet(table_name)
-        for col_number, value in enumerate(column_names):
-            self.sheets[table_name].write(0, col_number, value)
+    def add_sheet(self, sheet_name, table):
+        sheet = self.workbook.add_sheet(sheet_name)
 
-    def add_grid(self, grid_name):
-        self.sheets[grid_name] = self.workbook.add_sheet(grid_name)
-
-    def write_rows(self, table_name, rows):
-
-        write_cell = self.sheets[table_name].write
-        write_cell_merged = self.sheets[table_name].write_merge
-
-        for j, row in enumerate(rows):
+        for j, row in enumerate(table):
             for i, cell in enumerate(row):
                 (rowspan, colspan), content = get_cell_span_content(cell)
 
                 if colspan == rowspan == 1:
-                    write_cell(j, i, content)
+                    sheet.write(j, i, content)
                 else:
-                    write_cell_merged(j, j + rowspan - 1,
+                    sheet.write_merge(j, j + rowspan - 1,
                                       i, i + colspan - 1,
                                       content)
 
@@ -166,13 +150,19 @@ def main():
     generate_for_box(box_url)
 
 
+def paged_rows_generator(box_url, tables):
+    for table in tables:
+        yield get_paged_rows(box_url, table['name'])
+
+
 def generate_for_box(box_url):
 
     save_state('all_tables.xls', None, None, 'generating')
 
-    with ExcelOutput("http/all_tables.xls") as excel_output:
+    with ExcelOutput(join(DESTINATION, "all_tables.xls")) as excel_output:
         tables = get_dataset_tables(box_url)
-        dump_tables(box_url, excel_output, tables)
+        paged_rows = list(paged_rows_generator(box_url, tables))
+        dump_tables(excel_output, tables, paged_rows)
 
         grids = get_dataset_grids(box_url)
         dump_grids(excel_output, grids)
@@ -180,21 +170,36 @@ def generate_for_box(box_url):
     save_state('all_tables.xls', None, None, 'generated')
 
 
-def dump_tables(box_url, excel_output, tables):
+def make_table(columns, row_dicts):
+    """
+    Build a rectangular list-of-lists out of the table described by ``columns``
+    and ``row_dicts``
+    """
 
-    for table in tables:
+    yield columns
+
+    for row in row_dicts:
+        yield [row.get(column) for column in columns]
+
+
+def dump_tables(excel_output, tables, paged_rows):
+
+    for table, paged_rows in izip(tables, paged_rows):
         filename = '{}.csv'.format(make_filename(table['name']))
+        filename = join(DESTINATION, filename)
         save_state(filename, 'table', table['name'], 'generating')
 
+        # TODO(pwaller): If needed, process rows as a stream rather than all
+        # in one go. However, the tables interface is now defunct so I don't
+        # think this is likely to be important.
+        # In addition, this should be visited after the new excel writer.
+
+        rows = list(make_table(table['columns'], chain(*paged_rows)))
+
+        excel_output.add_sheet(table['name'], rows)
+
         with CsvOutput(filename) as csv_output:
-
-            for some_rows in get_paged_rows(box_url, table['name']):
-
-                csv_output.add_table(table['name'], table['columns'])
-                csv_output.write_rows(table['name'], some_rows)
-
-                excel_output.add_table(table['name'], table['columns'])
-                excel_output.write_rows(table['name'], some_rows)
+            csv_output.write_rows(rows)
 
         save_state(filename, 'table', table['name'], 'generated')
 
@@ -203,16 +208,16 @@ def dump_grids(excel_output, grids):
 
     for grid in grids:
         filename = '{}.csv'.format(make_filename(grid['name']))
+        filename = join(DESTINATION, filename)
         save_state(filename, 'grid', grid['name'], 'generating')
 
+        grid_rows = get_grid_rows(grid['url'])
+
+        csv_rows = make_plain_table(grid_rows)
         with CsvOutput(filename) as csv_output:
-            rows = get_grid_rows(grid['url'])
+            csv_output.write_rows(csv_rows)
 
-            csv_output.add_grid(grid['name'])
-            csv_output.write_rows(grid['name'], rows)
-
-            excel_output.add_grid(grid['name'])
-            excel_output.write_rows(grid['name'], rows)
+        excel_output.add_sheet(grid['name'], grid_rows)
 
         save_state(filename, 'grid', grid['name'], 'generated')
 
@@ -292,11 +297,8 @@ def get_paged_rows(box_url, table_name):
         start += PAGE_SIZE
 
 
-def get_grid_rows(grid_url):
-    response = requests.get(grid_url)
-    log("GET %s" % response.url)
-
-    dom = lxml.html.fromstring(response.text)
+def grid_rows_from_string(text):
+    dom = lxml.html.fromstring(text)
     table = dom.cssselect('table')[0]
 
     data = []
@@ -308,6 +310,12 @@ def get_grid_rows(grid_url):
             row.append(td)
 
     return data
+
+
+def get_grid_rows(grid_url):
+    response = requests.get(grid_url)
+    log("GET %s" % response.url)
+    return grid_rows_from_string(response.text)
 
 
 def save_state(filename, source_type, source_id, state):
