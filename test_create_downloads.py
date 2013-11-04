@@ -24,6 +24,19 @@ def test_generate_excel_colspans():
         for row in grid_rows:
             add_row(row)
 
+def test_generate_excel_colspans_complex():
+    # This test doesn't actually check the output, it just exercises the code.
+    # :(
+
+    with open("test/fixtures/more-complicated-colspan.html") as fd:
+        grid_rows = grid_rows_from_string(fd.read())
+
+    with ExcelOutput("test/test.xls") as excel_output:
+        add_row = excel_output.add_sheet("test_sheet")
+
+        for row in grid_rows:
+            add_row(row)
+
 
 def test_generate_csv_rowspans():
     raise SkipTest("Unskip this when rowspanning is implemented correctly")
