@@ -26,6 +26,49 @@ PAGE_SIZE = 5000
 DESTINATION = "./http"
 
 
+class GeneratorReader(object):
+
+    """
+    Turn a generator-of-strings into a file-like object with a ``read``
+    method.
+    """
+
+    def __init__(self, generator):
+        self.generator = generator
+        self._buf = []
+        self._bufsize = 0
+        self._total = 0
+
+    def read(self, amount=None):
+        if amount is None:
+            return "".join(chain(self._buf, self.generator))
+
+        # Retrieve enough from the generator to satisfy ``amount``
+        while self._bufsize < amount:
+            datum = next(self.generator, None)
+            if datum is None:
+                break
+            self._buf.append(datum)
+            self._bufsize += len(datum)
+
+        data = self._buf
+
+        # The last element of data must be too long.
+        # Split it into two and push one part of it onto buf.
+        if self._bufsize > amount:
+            over = self._bufsize - amount
+            left, right = data[-1][:-over], data[-1][-over:]
+            data, self._buf = data[:-1] + [left], [right]
+            self._bufsize = len(right)
+        else:
+            self._buf = []
+            self._bufsize = 0
+
+        result = b"".join(data)
+        self._total += len(result)
+        return result
+
+
 def get_cell_span_content(cell):
     """
     Return the content and spanning of ``cell``, which may be a string or a
@@ -47,6 +90,8 @@ def make_plain_table(table):
 
     If the table contains HTML td colspan elements, fill all spanned cells with
     its content to make the resulting table rectangular.
+
+    TODO(pwaller): Make generator version of this.
     """
     if all(isinstance(cell, basestring) for row in table for cell in row):
         # No transformation needed
@@ -102,6 +147,10 @@ class CsvOutput(object):
 
         os.rename(self.tempfile.name, self.path)
         os.chmod(self.path, 0644)
+
+    def write_row(self, row):
+        # TODO(pwaller): Deal with row/cell spans.
+        self.writer.writerow(row)
 
     def write_rows(self, rows):
         self.writer.writerows(rows)
@@ -184,43 +233,42 @@ def make_table(columns, row_dicts):
         yield [row.get(column) for column in columns]
 
 
+def write_excel_csv(excel_output, sheet_name, filename, rows):
+    write_excel_row = excel_output.add_sheet(sheet_name)
+
+    with CsvOutput(filename) as csv_output:
+        write_csv_row = csv_output.write_row
+
+        for row in rows:
+            # Loop structure is intentionally this way because `grid_rows``
+            # is a generator, and this is desirable for low memory usage.
+            write_csv_row(row)
+            write_excel_row(row)
+
+
 def dump_tables(excel_output, tables, paged_rows):
 
     for table, paged_rows in izip(tables, paged_rows):
+        rows = make_table(table['columns'], chain.from_iterable(paged_rows))
+
         filename = '{}.csv'.format(make_filename(table['name']))
         filename = join(DESTINATION, filename)
+
         save_state(filename, 'table', table['name'], 'generating')
-
-        # TODO(pwaller): If needed, process rows as a stream rather than all
-        # in one go. However, the tables interface is now defunct so I don't
-        # think this is likely to be important.
-        # In addition, this should be visited after the new excel writer.
-
-        rows = list(make_table(table['columns'], chain(*paged_rows)))
-
-        excel_output.add_sheet(table['name'], rows)
-
-        with CsvOutput(filename) as csv_output:
-            csv_output.write_rows(rows)
-
+        write_excel_csv(excel_output, table['name'], filename, rows)
         save_state(filename, 'table', table['name'], 'generated')
 
 
 def dump_grids(excel_output, grids):
 
     for grid in grids:
-        filename = '{}.csv'.format(make_filename(grid['name']))
-        filename = join(DESTINATION, filename)
-        save_state(filename, 'grid', grid['name'], 'generating')
-
         grid_rows = get_grid_rows(grid['url'])
 
-        csv_rows = make_plain_table(grid_rows)
-        with CsvOutput(filename) as csv_output:
-            csv_output.write_rows(csv_rows)
+        filename = '{}.csv'.format(make_filename(grid['name']))
+        filename = join(DESTINATION, filename)
 
-        excel_output.add_sheet(grid['name'], grid_rows)
-
+        save_state(filename, 'grid', grid['name'], 'generating')
+        write_excel_csv(excel_output, grid['name'], filename, grid_rows)
         save_state(filename, 'grid', grid['name'], 'generated')
 
 
@@ -233,7 +281,7 @@ def get_dataset_tables(box_url):
             tables.append({
                 'id': table_name,
                 'name': table_name,
-                'columns': table_meta['columnNames']
+                'columns': table_meta['columnNames'],
             })
 
     return tables
@@ -247,7 +295,7 @@ def get_dataset_grids(box_url):
             grids.append({
                 'id': result['checksum'],
                 'name': result['title'],
-                'url': result['url']
+                'url': result['url'],
             })
     except Exception as e:
         log('could not get _grids:')
@@ -300,11 +348,40 @@ def get_paged_rows(box_url, table_name):
 
 
 def grid_rows_from_string(text):
+    """
+    Note: this code is an improvement on ``grid_rows_from_string_old`` but
+          still has very high memory requirements. Better to use
+          ``generate_grid_rows``.
+    """
     dom = lxml.html.fromstring(text)
+
+    table = []
+    row = []
+    table.append(row)
+
+    for element in dom.iter():
+        if element.tag == "tr":
+            row = []
+            table.append(row)
+        elif element.tag == "td":
+            row.append(element)
+
+    return table
+
+
+def grid_rows_from_string_old(text):
+    """
+    Note: this code as O(N^2) performance on the number of rows and should be
+        deleted. It is just here for comparison.
+    """
+    dom = lxml.html.fromstring(text)
+
     table = dom.cssselect('table')[0]
 
+    trs = table.cssselect('tr')
+
     data = []
-    for tr in table.cssselect('tr'):
+    for tr in trs:
         row = []
         data.append(row)
 
@@ -318,6 +395,52 @@ def get_grid_rows(grid_url):
     response = requests.get(grid_url)
     log("GET %s" % response.url)
     return grid_rows_from_string(response.text)
+
+
+def find_trs(input_html):
+    """
+    Parse ``input_html`` streamwise, yielding one list per <tr> containing
+    ``lxml.html.HtmlElement``.
+
+    The row *must* be consumed immediately since the lxml.HtmlElement are
+    destroyed to conserve memory.
+    """
+    parser = lxml.etree.iterparse(input_html, events=("end",))
+    row = []
+
+    for _, element in parser:
+
+        if element.tag == "td":
+            row.append(element)
+            continue
+
+        if element.tag == "tr":
+            yield row
+
+            row[:] = []
+
+        # These few lines make the memory requirements go from as high as
+        # 8 GB to ~1MB when parsing large files.
+        element.clear()
+        while element.getprevious() is not None:
+            del element.getparent()[0]
+
+
+def generate_grid_rows(grid_url):
+    """
+    Lazy generator of rows for the grid at ``grid_url``.
+
+    Doesn't cause the whole grid to be loaded into memory at any one time, so
+    has very low memory requirements.
+
+    Rows *must* be consumed immediately.
+    """
+    response = requests.get(url, stream=True)
+    # Note: this happens to be the size that lxml.etree.iterparse uses when
+    #       parsing file-like objects. It doesn't have a very big impact on
+    #       performance.
+    CHUNK_SIZE = 32 * 1024
+    return find_trs(GeneratorReader(response.iter_content(CHUNK_SIZE)))
 
 
 def save_state(filename, source_type, source_id, state):
@@ -335,7 +458,7 @@ def save_state(filename, source_type, source_id, state):
         'state': state,
         'created': created,
         'source_type': source_type,
-        'source_id': source_id
+        'source_id': source_id,
     }, '_state_files')
 
 
