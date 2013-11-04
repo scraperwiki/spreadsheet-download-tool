@@ -7,10 +7,11 @@ import os
 import re
 import traceback
 
-from itertools import chain, izip, product
+from contextlib import contextmanager
 from datetime import datetime
+from itertools import chain, izip, product
 from tempfile import NamedTemporaryFile
-from os.path import abspath, dirname, join
+from os.path import abspath, basename, dirname, join
 
 import lxml.html
 import requests
@@ -283,19 +284,31 @@ def paged_rows_generator(box_url, tables):
         yield get_paged_rows(box_url, table['name'])
 
 
+@contextmanager
+def update_state(filename, source_type, source_id):
+    filename = basename(filename)
+
+    save_state(filename, source_type, source_id, "generating")
+    try:
+        yield
+    except:
+        save_state(filename, source_type, source_id, "failed")
+        raise
+    else:
+        save_state(filename, source_type, source_id, "generated")
+
 def generate_for_box(box_url):
 
-    save_state('all_tables.xls', None, None, 'generating')
+    state = update_state('all_tables.xls', None, None)
+    excel_output = ExcelOutput(join(DESTINATION, "all_tables.xls"))
 
-    with ExcelOutput(join(DESTINATION, "all_tables.xls")) as excel_output:
+    with state, excel_output:
         tables = get_dataset_tables(box_url)
         paged_rows = list(paged_rows_generator(box_url, tables))
         dump_tables(excel_output, tables, paged_rows)
 
         grids = get_dataset_grids(box_url)
         dump_grids(excel_output, grids)
-
-    save_state('all_tables.xls', None, None, 'generated')
 
 
 def make_table(columns, row_dicts):
@@ -331,9 +344,8 @@ def dump_tables(excel_output, tables, paged_rows):
         filename = '{}.csv'.format(make_filename(table['name']))
         filename = join(DESTINATION, filename)
 
-        save_state(filename, 'table', table['name'], 'generating')
-        write_excel_csv(excel_output, table['name'], filename, rows)
-        save_state(filename, 'table', table['name'], 'generated')
+        with update_state(filename, 'table', table['name']):
+            write_excel_csv(excel_output, table['name'], filename, rows)
 
 
 def dump_grids(excel_output, grids):
@@ -344,9 +356,8 @@ def dump_grids(excel_output, grids):
         filename = '{}.csv'.format(make_filename(grid['name']))
         filename = join(DESTINATION, filename)
 
-        save_state(filename, 'grid', grid['name'], 'generating')
-        write_excel_csv(excel_output, grid['name'], filename, grid_rows)
-        save_state(filename, 'grid', grid['name'], 'generated')
+        with update_state(filename, 'grid', grid['name']):
+            write_excel_csv(excel_output, grid['name'], filename, grid_rows)
 
 
 def get_dataset_tables(box_url):
