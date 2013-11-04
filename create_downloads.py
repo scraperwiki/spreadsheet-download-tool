@@ -189,11 +189,13 @@ class CsvOutput(object):
 
             row[colidx] = content
 
-        for i, cell in enumerate(row):
+        i = 0
+        for cell in row:
             (rowspan, colspan), content = get_cell_span_content(cell)
 
             if colspan == rowspan == 1:
                 insert(0, i, content)
+                i += 1
                 continue
 
             # TODO(pwaller, drj): rowspans are too difficult to implement right
@@ -207,6 +209,8 @@ class CsvOutput(object):
             # Copy spanning content
             for y, x in product(xrange(rowspan), xrange(colspan)):
                 insert(y, i + x, content)
+
+            i += colspan
 
         output_row, self._buffer = self._buffer[0], self._buffer[1:]
 
@@ -249,8 +253,9 @@ class ExcelOutput(object):
         def write_row(row):
 
             j = State.current_row
+            i = 0
 
-            for i, cell in enumerate(row):
+            for cell in row:
                 (rowspan, colspan), content = get_cell_span_content(cell)
 
                 if colspan == rowspan == 1:
@@ -259,6 +264,8 @@ class ExcelOutput(object):
                     sheet.write_merge(j, j + rowspan - 1,
                                       i, i + colspan - 1,
                                       content)
+
+                i += colspan
 
             State.current_row += 1
 
