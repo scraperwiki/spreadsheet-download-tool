@@ -135,6 +135,9 @@ class CsvOutput(object):
         self.tempfile = NamedTemporaryFile(dir=dirname(path), delete=False)
         self.writer = unicodecsv.writer(self.tempfile, encoding='utf-8')
 
+        # Row buffer for colspans.
+        self._buffer = []
+
     def __enter__(self):
         return self
 
@@ -148,9 +151,47 @@ class CsvOutput(object):
         os.rename(self.tempfile.name, self.path)
         os.chmod(self.path, 0644)
 
-    def write_row(self, row):
-        # TODO(pwaller): Deal with row/cell spans.
+    def _send_row(self, row):
+        """
+        Mocked in the tests to check that the correct rows are being sent.
+        """
+        # Abstracted so that self.writer implementation could be replaced.
         self.writer.writerow(row)
+
+    def write_row(self, row):
+        if len(row) == 0:
+            return
+
+        def insert(rowidx, colidx, content):
+            """
+            Ensure that self._buffer is long enough to accomodate ``content``
+            at ``(row, col)``
+            """
+            n_missing_rows = rowidx - len(self._buffer) + 1
+            if n_missing_rows > 0:
+                self._buffer.extend(list() for _ in xrange(n_missing_rows))
+
+            row = self._buffer[rowidx]
+            n_missing_cells = colidx - len(row) + 1
+            if n_missing_cells > 0:
+                row.extend("" for _ in xrange(n_missing_cells))
+
+            row[colidx] = content
+
+        for i, cell in enumerate(row):
+            (rowspan, colspan), content = get_cell_span_content(cell)
+
+            if colspan == rowspan == 1:
+                insert(0, i, content)
+                continue
+
+            # Copy spanning content
+            for y, x in product(xrange(rowspan), xrange(colspan)):
+                insert(y, i + x, content)
+
+        output_row, self._buffer = self._buffer[0], self._buffer[1:]
+
+        self._send_row(output_row)
 
     def write_rows(self, rows):
         self.writer.writerows(rows)
