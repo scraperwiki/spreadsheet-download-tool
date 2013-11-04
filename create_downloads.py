@@ -91,7 +91,9 @@ def make_plain_table(table):
     If the table contains HTML td colspan elements, fill all spanned cells with
     its content to make the resulting table rectangular.
 
-    TODO(pwaller): Make generator version of this.
+    NOTE(pwaller): This code has been superceded by CsvOutput.write_row.
+                   It's still here for testing purposes for now but can be
+                   deleted one day.
     """
     if all(isinstance(cell, basestring) for row in table for cell in row):
         # No transformation needed
@@ -142,6 +144,10 @@ class CsvOutput(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+
+        # TODO(pwaller): Ensure that self._buffer is emptied
+        assert not self._buffer
+
         self.tempfile.close()
 
         if exc_type is not None:
@@ -159,13 +165,18 @@ class CsvOutput(object):
         self.writer.writerow(row)
 
     def write_row(self, row):
+        """
+        Stream write ``row``, taking into account row/colspanning, buffering
+        rowspans into the future rows.
+        """
+
         if len(row) == 0:
             return
 
         def insert(rowidx, colidx, content):
             """
             Ensure that self._buffer is long enough to accomodate ``content``
-            at ``(row, col)``
+            at ``(row, col)``.
             """
             n_missing_rows = rowidx - len(self._buffer) + 1
             if n_missing_rows > 0:
