@@ -10,35 +10,77 @@ from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
                               make_plain_table, dump_grids, find_trs)
 
 
-def test_generate_excel():
+def test_generate_excel_colspans():
+    # This test doesn't actually check the output, it just exercises the code.
+    # :(
+
     with open("test/fixtures/simple-table-colspans.html") as fd:
         grid_rows = grid_rows_from_string(fd.read())
 
     with ExcelOutput("test/test.xls") as excel_output:
-        excel_output.add_sheet("test_sheet", grid_rows)
+        add_row = excel_output.add_sheet("test_sheet")
+
+        for row in grid_rows:
+            add_row(row)
+
+
+def test_generate_csv_colspans():
+    # This test doesn't actually check the output, it just exercises the code.
+    # :(
+
+    with open("test/fixtures/simple-table-colspans.html") as fd:
+        grid_rows = grid_rows_from_string(fd.read())
 
     csv_rows = make_plain_table(grid_rows)
     with CsvOutput("test/test.csv") as csv_output:
         csv_output.write_rows(csv_rows)
 
 
+def test_dump_grids():
+    with mock.patch("create_downloads.get_grid_rows") as get_grid_rows, \
+            mock.patch("create_downloads.CsvOutput.write_row") as write_row:
+
+        rows = [
+            [1, 2, 3, 4],
+            [1, 2, 3, 4],
+            [1, 2, 3, 4],
+        ]
+
+        def get_rows(*args):
+            return rows
+
+        get_grid_rows.side_effect = get_rows
+
+        # class MockExcel():
+
+        #     def add_sheet(self, name):
+        #         def write_row(row):
+        #             pass
+        #         return write_row
+
+        with ExcelOutput("test/test_all_tables.xls") as excel_output:
+            grids = [{'name': '<name>', 'url': '<url>'}]
+            dump_grids(excel_output, grids)
+
+        # assert_equal(   ) write_row.call_args_list
+
+
 def getmaxrss_mb():
+    """
+    Return the maximum resident memory usage of this process
+    """
     ru = getrusage(RUSAGE_SELF)
 
     def as_mb(n_pages):
         return n_pages * getpagesize() / 1024. ** 2
 
-    before, after = None, None
-
-    # import gc
-    # before = gc.get_count(), len(gc.get_objects())
-    # gc.collect()
-    # after = gc.get_count(), len(gc.get_objects())
-
-    return as_mb(ru.ru_maxrss)  # , before, after
+    return as_mb(ru.ru_maxrss)
 
 
 def make_table(nrows, ncols):
+    """
+    Return a simple HTML table with nrows ncols.
+    """
 
     return dedent(b"""\
         <table>
@@ -94,5 +136,3 @@ def test_mem_parse_giant_table():
 
     # Check that we didn't use more than 1MB to parse the table.
     assert_less_equal(used, 1)
-
-

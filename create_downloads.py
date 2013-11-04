@@ -180,10 +180,16 @@ class ExcelOutput(object):
                 os.rename(tempfile.name, self.path)
                 os.chmod(self.path, 0644)
 
-    def add_sheet(self, sheet_name, table):
+    def add_sheet(self, sheet_name):
         sheet = self.workbook.add_sheet(sheet_name)
 
-        for j, row in enumerate(table):
+        class State:
+            current_row = 0
+
+        def write_row(row):
+
+            j = State.current_row
+
             for i, cell in enumerate(row):
                 (rowspan, colspan), content = get_cell_span_content(cell)
 
@@ -193,6 +199,10 @@ class ExcelOutput(object):
                     sheet.write_merge(j, j + rowspan - 1,
                                       i, i + colspan - 1,
                                       content)
+
+            State.current_row += 1
+
+        return write_row
 
 
 def main():
