@@ -196,6 +196,14 @@ class CsvOutput(object):
                 insert(0, i, content)
                 continue
 
+            # TODO(pwaller, drj): rowspans are too difficult to implement right
+            # at this second. You need to take account of rowspans impinging
+            # upon this row in order to get the correct value of ``i``.
+            assert rowspan < 2, "Not Implemented: Please report this."
+
+            # if rowspan > 1:
+            #     dbg()
+
             # Copy spanning content
             for y, x in product(xrange(rowspan), xrange(colspan)):
                 insert(y, i + x, content)

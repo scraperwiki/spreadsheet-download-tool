@@ -5,6 +5,7 @@ from resource import getrusage, RUSAGE_SELF, getpagesize
 from textwrap import dedent
 
 from nose.tools import assert_equal, assert_less_equal
+from nose.plugins.skip import SkipTest
 
 from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
                               make_plain_table, dump_grids, find_trs)
@@ -22,6 +23,41 @@ def test_generate_excel_colspans():
 
         for row in grid_rows:
             add_row(row)
+
+
+def test_generate_csv_rowspans():
+    raise SkipTest("Unskip this when rowspanning is implemented correctly")
+
+    with open("test/fixtures/simple-table-rowspans.html") as fd:
+        grid_rows = grid_rows_from_string(fd.read())
+
+    with mock.patch("create_downloads.CsvOutput._send_row") as _send_row:
+        with CsvOutput("test/test-rowspans.csv") as csv_output:
+            for row in grid_rows:
+                csv_output.write_row(row)
+
+        from mock import call
+        expected = [
+            call([u'Name: \u201cBlad1\u201d', u'Name: \u201cBlad1\u201d',
+                  u'Name: \u201cBlad1\u201d', u'Name: \u201cBlad1\u201d']),
+            call(['Table: 1', 'Table: 1', 'Table: 1', 'Table: 1']),
+            call(['', '', '', '']),
+            call(['Port', '31 December 2012', '31 January 2013',
+                  'Difference']),
+            call(['Port', '', '', '']),
+            call(['Antwerp', '4827966.66667', '4947533.33333',
+                  '119566.666667']),
+            call(['Bremen', '1265600.0', '1344250.0', '78650.0']),
+            call(['Hamburg', '1593400.0', '1653916.66667', '60516.6666667']),
+            call(['Genova', '934993.0', '947459.0', '12466.0']),
+            call(['Le Havre', '445833.333333', '479983.333333', '34150.0']),
+            call(['Trieste', '695243.0', '702157.0', '6914.0']),
+            call(['Total Europe', '9763036.0', '10075299.3333',
+                  '312263.333333'])]
+
+        # The intent of this test is to ensure that colspans are correctly
+        # copied to all of the destination cells which are overlapped by it.
+        assert_equal(expected, _send_row.call_args_list)
 
 
 def test_generate_csv_colspans():
