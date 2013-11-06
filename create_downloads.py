@@ -482,6 +482,7 @@ def grid_rows_from_string_old(text):
 def get_grid_rows(grid_url):
     response = requests.get(grid_url)
     log("GET %s" % response.url)
+    response.encoding = 'utf-8'
     return grid_rows_from_string(response.text)
 
 
