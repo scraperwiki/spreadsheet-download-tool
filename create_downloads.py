@@ -27,6 +27,10 @@ PAGE_SIZE = 5000
 DESTINATION = "./http"
 
 
+class DatasetIsEmptyError(Exception):
+    pass
+
+
 class GeneratorReader(object):
 
     """
@@ -304,11 +308,14 @@ def generate_for_box(box_url):
 
     with state, excel_output:
         tables = get_dataset_tables(box_url)
-        paged_rows = list(paged_rows_generator(box_url, tables))
-        dump_tables(excel_output, tables, paged_rows)
-
         grids = get_dataset_grids(box_url)
-        dump_grids(excel_output, grids)
+
+        if tables or grids:
+            paged_rows = list(paged_rows_generator(box_url, tables))
+            dump_tables(excel_output, tables, paged_rows)
+            dump_grids(excel_output, grids)
+        else:
+            raise DatasetIsEmptyError('Your dataset contains no data')
 
 
 def make_table(columns, row_dicts):
