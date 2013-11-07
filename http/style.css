@@ -106,3 +106,23 @@
 .alert pre {
   margin-top: 10px;
 }
+
+div.problem {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20em;
+  margin: -4em 0 0 -10em;
+  text-align: center;
+  color: #68460B;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  background-color: rgb(252, 248, 227);
+  border: 1px solid rgb(251, 238, 213);
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+}
+
+div.problem h4 {
+  margin-top: 14px; /* to match the margin-bottom of the <p> below it */
+}
