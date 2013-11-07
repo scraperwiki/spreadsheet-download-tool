@@ -194,17 +194,35 @@ var setTimer = function() {
   }
 }
 
+var clearTimer = function(){
+  console.log('clearing window.timer interval for checkStatus()')
+  clearInterval(window.timer)
+}
+
 var checkStatus = function(){
   console.log('checkStatus()')
   var unfinishedFiles = _.reject(window.files, function(file){
     return file.state == 'generated'
   })
   if(unfinishedFiles.length){
-    console.log(unfinishedFiles.length, 'unfinished files ... running updateFileList()')
-    // some files are still outstanding, so check _state_files database for updates
-    updateFileList(renderFiles)
+    // some files are still outstanding, so check
+    // _state_files for updates, and _error for errors
+    scraperwiki.tool.sql('select * from _error', function(errors){
+      // there was an error!! Stop everything and display it
+      var error = errors[0]['message']
+      clearTimer()
+      if(/row index \(65536\) not an int in range\(65536\)/.test(error)){
+        scraperwiki.alert('An error occurred:', 'One of your tables has more than 65536 rows, and could not be written to the Excel file. Contact hello@scraperwiki.com for help.', true)
+      } else {
+        scraperwiki.alert('An unexpected error occurred.', 'Contact hello@scraperwiki.com for help.<pre style="margin-top: 7px">' + error + '</pre>', true)
+      }
+    }, function(jqXHR, textStatus, errorThrown){
+      if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText)){
+        // no errors table, so we assume everything's ok
+        updateFileList(renderFiles)
+      }
+    })
   } else {
-    console.log('no unfinished files ... running renderFiles()')
     // no files outstanding, don't bother checking _state_files database
     renderFiles()
   }

@@ -12,6 +12,9 @@ from os.path import join, abspath, dirname
 import scraperwiki
 
 def main():
+    log('# {} clearing _error table'.format(datetime.now().isoformat()))
+    scraperwiki.sql.execute('DROP TABLE IF EXISTS _error')
+    scraperwiki.sql.commit()
     log('# {} creating downloads:'.format(datetime.now().isoformat()))
     box_url = get_box_url()
     tables = get_dataset_tables(box_url)
