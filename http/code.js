@@ -211,7 +211,9 @@ var checkStatus = function(){
       // there was an error!! Stop everything and display it
       var error = errors[0]['message']
       clearTimer()
-      if(/row index \(65536\) not an int in range\(65536\)/.test(error)){
+      if(/DatasetIsEmptyError/.test(error)){
+        showEmptyDatasetMessage()
+      } else if(/row index \(65536\) not an int in range\(65536\)/.test(error)){
         scraperwiki.alert('An error occurred:', 'One of your tables has more than 65536 rows, and could not be written to the Excel file. Contact hello@scraperwiki.com for help.', true)
       } else {
         scraperwiki.alert('An unexpected error occurred.', 'Contact hello@scraperwiki.com for help.<pre style="margin-top: 7px">' + error + '</pre>', true)
@@ -252,6 +254,10 @@ var refresh_click = function(){
   })
 }
 
+var showEmptyDatasetMessage = function(){
+  $('body').html('<div class="problem"><h4>This dataset is empty.</h4><p>Once your dataset contains data,<br/>your downloads will be generated here.</p></div>')
+}
+
 $(function(){
 
   resetGlobalVariables()
@@ -259,10 +265,14 @@ $(function(){
   saveDatasetUrl()
 
   getDatasetTablesAndGrids(function(){
-    generateFileList(function(){
-      renderFiles()
-      setTimer()
-    })
+    if(window.tablesAndGrids.tables.length + window.tablesAndGrids.grids.length == 0){
+      showEmptyDatasetMessage()
+    } else {
+      generateFileList(function(){
+        renderFiles()
+        setTimer()
+      })
+    }
   })
 
   $('#refresh').on('click', refresh_click)
