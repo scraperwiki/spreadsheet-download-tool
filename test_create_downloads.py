@@ -4,11 +4,30 @@ from io import BytesIO
 from resource import getrusage, RUSAGE_SELF, getpagesize
 from textwrap import dedent
 
-from nose.tools import assert_equal, assert_less_equal
+from nose.tools import assert_equal, assert_greater, assert_less_equal
 from nose.plugins.skip import SkipTest
 
 from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
-                              make_plain_table, dump_grids, find_trs)
+                              make_plain_table, dump_grids, find_trs,
+                              write_excel_csv)
+
+@mock.patch("create_downloads.CsvOutput")
+def test_generate_many_excel_rows(CsvOutput):
+    # See Issue 49:
+    # https://github.com/scraperwiki/spreadsheet-download-tool/issues/49
+
+    # Mock an ExcelOutput instance that raises an Exception when you try to
+    # write row.
+    excel_output = mock.Mock()
+    write_excel_row = excel_output.add_sheet("dummy")
+    write_excel_row.side_effect = Exception
+    with CsvOutput("foo_file") as CsvMockInstance:
+      write_csv_row = CsvMockInstance.write_row
+
+    many_rows = [[1,2,3]]*70000
+
+    write_excel_csv(excel_output, "foo_sheet", "foo_file", many_rows)
+    assert_greater(write_csv_row.call_count, 65535)
 
 
 def test_generate_excel_colspans():

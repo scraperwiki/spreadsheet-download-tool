@@ -335,12 +335,16 @@ def write_excel_csv(excel_output, sheet_name, filename, rows):
 
     with CsvOutput(filename) as csv_output:
         write_csv_row = csv_output.write_row
+        writers = [write_csv_row, write_excel_row]
 
         for row in rows:
             # Loop structure is intentionally this way because `grid_rows``
             # is a generator, and this is desirable for low memory usage.
-            write_csv_row(row)
-            write_excel_row(row)
+            for writer in writers:
+                try:
+                    writer(row)
+                except Exception:
+                    writers.remove(writer)
 
 
 def dump_tables(excel_output, tables, paged_rows):
