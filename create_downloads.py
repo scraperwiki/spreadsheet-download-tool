@@ -386,7 +386,7 @@ def dump_tables(excel_output, tables, paged_rows_list):
               chain.from_iterable(paged_rows_get()))
 
         csv_filename = '{}.csv'.format(make_filename(table['name']))
-        csv_filename = join(DESTINATION, filename)
+        csv_filename = join(DESTINATION, csv_filename)
 
         with update_state(csv_filename, 'table', table['name']):
             write_excel_csv(excel_output, table['name'],
