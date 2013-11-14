@@ -4,7 +4,10 @@ from io import BytesIO
 from resource import getrusage, RUSAGE_SELF, getpagesize
 from textwrap import dedent
 
-from nose.tools import assert_equal, assert_greater, assert_less_equal
+from nose.tools import (
+    assert_equal, assert_greater, assert_less_equal,
+    assert_raises
+)
 from nose.plugins.skip import SkipTest
 
 from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
@@ -12,22 +15,38 @@ from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
                               write_excel_csv)
 
 @mock.patch("create_downloads.CsvOutput")
-def test_generate_many_excel_rows(CsvOutput):
+def test_always_write_csv(CsvOutput):
     # See Issue 49:
     # https://github.com/scraperwiki/spreadsheet-download-tool/issues/49
 
-    # Mock an ExcelOutput instance that raises an Exception when you try to
-    # write row.
+    class NewException(Exception): pass
+
+    # Mock an ExcelOutput instance that raises an Exception when you
+    # try to write row.
     excel_output = mock.Mock()
     write_excel_row = excel_output.add_sheet("dummy")
-    write_excel_row.side_effect = Exception
-    with CsvOutput("foo_file") as CsvMockInstance:
-      write_csv_row = CsvMockInstance.write_row
+    write_excel_row.side_effect = NewException
 
-    many_rows = [[1,2,3]]*70000
+    # Mock the csv writer (so we can collect counts).
+    # We need csv_mock_instance to be object returned from the
+    # CsvOutput() context manager.
+    # (this mocking relies on the fact that inside the `with` statement
+    # in write_excel_csv it sees the same mock instance we used
+    # here (named csv_mock_instance here)).
+    with CsvOutput("foo_file") as csv_mock_instance:
+        write_csv_row = csv_mock_instance.write_row
 
-    write_excel_csv(excel_output, "foo_sheet", "foo_file", many_rows)
-    assert_greater(write_csv_row.call_count, 65535)
+    A_NUMBER_OF_ROWS = 7000
+    def get_many_rows():
+        return [[1, 2, 3]] * A_NUMBER_OF_ROWS
+
+    # As of 2013-11-14 write_excel_csv does not catch exception
+    # from the underlying excel writer. So this test will see
+    # the exception that the mocked write_excel_row raises.
+    assert_raises(NewException, lambda:
+        write_excel_csv(excel_output, "foo_sheet", "foo_file",
+            get_many_rows))
+    assert_equal(write_csv_row.call_count, A_NUMBER_OF_ROWS)
 
 
 def test_generate_excel_colspans():

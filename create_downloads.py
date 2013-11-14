@@ -311,8 +311,13 @@ def generate_for_box(box_url):
         grids = get_dataset_grids(box_url)
 
         if tables or grids:
-            paged_rows = list(paged_rows_generator(box_url, tables))
-            dump_tables(excel_output, tables, paged_rows)
+            # One function per table. That function returns a
+            # fresh paged iterator for the rows of that table.
+            paged_rows_list = [
+                (lambda: get_paged_rows(box_url, table['name']))
+                for table in tables
+            ]
+            dump_tables(excel_output, tables, paged_rows_list)
             dump_grids(excel_output, grids)
         else:
             raise DatasetIsEmptyError('Your dataset contains no data')
@@ -330,46 +335,71 @@ def make_table(columns, row_dicts):
         yield [row.get(column) for column in columns]
 
 
-def write_excel_csv(excel_output, sheet_name, filename, rows):
-    write_excel_row = excel_output.add_sheet(sheet_name)
+def write_excel_csv(excel_output, sheet_name, filename, get_rows):
+    """
+    `get_rows()` is a function that returns a rows iterator.
+    We need it be a function so that we can stream the rows
+    twice, once for csv, once for excel.
+    """
+
+    n_rows = write_csv(filename, get_rows())
+    write_excel(excel_output, sheet_name, get_rows())
+
+
+def write_csv(filename, rows):
+    """
+    Returns the number of rows written to the CSV file.
+    """
 
     with CsvOutput(filename) as csv_output:
         write_csv_row = csv_output.write_row
-        writers = [write_csv_row, write_excel_row]
 
-        for row in rows:
+        for i, row in enumerate(rows):
             # Loop structure is intentionally this way because `grid_rows``
             # is a generator, and this is desirable for low memory usage.
-            for writer in writers:
-                try:
-                    writer(row)
-                except Exception as e:
-                    writers.remove(writer)
-                    log(e)
+            write_csv_row(row)
+    return i+1
+
+def write_excel(excel_output, sheet_name, rows):
+
+    write_excel_row = excel_output.add_sheet(sheet_name)
+
+    for row in rows:
+        write_excel_row(row)
 
 
-def dump_tables(excel_output, tables, paged_rows):
+def dump_tables(excel_output, tables, paged_rows_list):
+    """
+    *paged_rows_get* is a list of functions, one per table. Each
+    function when called returns a page iterator for the rows of
+    that table.  Each function can be called multiple times to get
+    a fresh list of fresh iterators.
+    """
 
-    for table, paged_rows in izip(tables, paged_rows):
-        rows = make_table(table['columns'], chain.from_iterable(paged_rows))
+    for table, paged_rows_get in izip(tables, paged_rows_list):
+        def get_rows():
+            return make_table(table['columns'],
+              chain.from_iterable(paged_rows_get()))
 
-        filename = '{}.csv'.format(make_filename(table['name']))
-        filename = join(DESTINATION, filename)
+        csv_filename = '{}.csv'.format(make_filename(table['name']))
+        csv_filename = join(DESTINATION, filename)
 
-        with update_state(filename, 'table', table['name']):
-            write_excel_csv(excel_output, table['name'], filename, rows)
+        with update_state(csv_filename, 'table', table['name']):
+            write_excel_csv(excel_output, table['name'],
+                csv_filename, get_rows)
 
 
 def dump_grids(excel_output, grids):
 
     for grid in grids:
-        grid_rows = get_grid_rows(grid['url'])
+        def get_grid_rows_local():
+            return get_grid_rows(grid['url'])
 
         filename = '{}.csv'.format(make_filename(grid['name']))
         filename = join(DESTINATION, filename)
 
         with update_state(filename, 'grid', grid['name']):
-            write_excel_csv(excel_output, grid['name'], filename, grid_rows)
+            write_excel_csv(excel_output, grid['name'], filename, get_grid_rows_local)
 
 
 def get_dataset_tables(box_url):
