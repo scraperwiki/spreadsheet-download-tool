@@ -343,8 +343,9 @@ def write_excel_csv(excel_output, sheet_name, filename, rows):
             for writer in writers:
                 try:
                     writer(row)
-                except Exception:
+                except Exception as e:
                     writers.remove(writer)
+                    log(e)
 
 
 def dump_tables(excel_output, tables, paged_rows):
