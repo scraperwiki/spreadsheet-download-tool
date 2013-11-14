@@ -14,12 +14,51 @@ from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
                               make_plain_table, dump_grids, find_trs,
                               write_excel_csv)
 
+class NewException(Exception):
+    """
+    Exists so that we can tell that our mock function raises
+    exactly this exception and no other.
+    """
+
+def test_always_write_csv_7k():
+
+    class Squirrel:
+        write_csv_row = None
+
+    N_ROWS = 7000
+
+    # As of 2013-11-14 write_excel_csv does not catch exception
+    # from the underlying excel writer. So this test will see
+    # the exception that the mocked write_excel_row raises.
+    def call_it():
+        write_many_rows(N_ROWS, Squirrel)
+    assert_raises(NewException, call_it)
+    assert_equal(Squirrel.write_csv_row.call_count, N_ROWS)
+
+def test_always_write_csv_70k():
+    """
+    When writing 70000 rows we expect write_excel_csv to
+    notice, and avoid writing to the excel file.
+    """
+
+    N_ROWS = 70000
+
+    class Squirrel:
+        write_csv_row = None
+    write_csv_row = write_many_rows(N_ROWS, Squirrel)
+    assert_equal(Squirrel.write_csv_row.call_count, N_ROWS)
+
 @mock.patch("create_downloads.CsvOutput")
-def test_always_write_csv(CsvOutput):
+def write_many_rows(n_rows, squirrel, CsvOutput):
+    """
+    Write *n_rows* using the `write_excel_csv()` function.
+    `squirrel` is a place where the `write_csv_row` mock
+    function is stored (in `squirrel.write_csv_row`); callers
+    can use it to check various assertions.
+    """
+
     # See Issue 49:
     # https://github.com/scraperwiki/spreadsheet-download-tool/issues/49
-
-    class NewException(Exception): pass
 
     # Mock an ExcelOutput instance that raises an Exception when you
     # try to write row.
@@ -34,19 +73,13 @@ def test_always_write_csv(CsvOutput):
     # in write_excel_csv it sees the same mock instance we used
     # here (named csv_mock_instance here)).
     with CsvOutput("foo_file") as csv_mock_instance:
-        write_csv_row = csv_mock_instance.write_row
+        squirrel.write_csv_row = csv_mock_instance.write_row
 
-    A_NUMBER_OF_ROWS = 7000
     def get_many_rows():
-        return [[1, 2, 3]] * A_NUMBER_OF_ROWS
+        return [[1, 2, 3]] * n_rows
 
-    # As of 2013-11-14 write_excel_csv does not catch exception
-    # from the underlying excel writer. So this test will see
-    # the exception that the mocked write_excel_row raises.
-    assert_raises(NewException, lambda:
-        write_excel_csv(excel_output, "foo_sheet", "foo_file",
-            get_many_rows))
-    assert_equal(write_csv_row.call_count, A_NUMBER_OF_ROWS)
+    write_excel_csv(excel_output, "foo_sheet", "foo_file",
+        get_many_rows)
 
 
 def test_generate_excel_colspans():

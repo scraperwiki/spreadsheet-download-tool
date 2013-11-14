@@ -343,6 +343,10 @@ def write_excel_csv(excel_output, sheet_name, filename, get_rows):
     """
 
     n_rows = write_csv(filename, get_rows())
+    if n_rows > 65536:
+        # :todo(drj,morty): should we log a problem here?
+        # Should we delete the excel file?
+        return
     write_excel(excel_output, sheet_name, get_rows())
 
 
