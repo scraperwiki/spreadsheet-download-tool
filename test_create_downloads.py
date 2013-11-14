@@ -2,6 +2,7 @@ import mock
 
 from io import BytesIO
 from resource import getrusage, RUSAGE_SELF, getpagesize
+from unittest import TestCase
 from textwrap import dedent
 
 from nose.tools import (
@@ -20,66 +21,71 @@ class NewException(Exception):
     exactly this exception and no other.
     """
 
-def test_always_write_csv_7k():
+class WriteCSV(TestCase):
 
-    class Squirrel:
-        write_csv_row = None
-
-    N_ROWS = 7000
-
-    # As of 2013-11-14 write_excel_csv does not catch exception
-    # from the underlying excel writer. So this test will see
-    # the exception that the mocked write_excel_row raises.
-    def call_it():
-        write_many_rows(N_ROWS, Squirrel)
-    assert_raises(NewException, call_it)
-    assert_equal(Squirrel.write_csv_row.call_count, N_ROWS)
-
-def test_always_write_csv_70k():
     """
-    When writing 70000 rows we expect write_excel_csv to
-    notice, and avoid writing to the excel file.
-    """
-
-    N_ROWS = 70000
-
-    class Squirrel:
-        write_csv_row = None
-    write_csv_row = write_many_rows(N_ROWS, Squirrel)
-    assert_equal(Squirrel.write_csv_row.call_count, N_ROWS)
-
-@mock.patch("create_downloads.CsvOutput")
-def write_many_rows(n_rows, squirrel, CsvOutput):
-    """
-    Write *n_rows* using the `write_excel_csv()` function.
-    `squirrel` is a place where the `write_csv_row` mock
-    function is stored (in `squirrel.write_csv_row`); callers
-    can use it to check various assertions.
+    Tests that check CSV writing (and interference from Excel
+    writing).
     """
 
     # See Issue 49:
     # https://github.com/scraperwiki/spreadsheet-download-tool/issues/49
 
-    # Mock an ExcelOutput instance that raises an Exception when you
-    # try to write row.
-    excel_output = mock.Mock()
-    write_excel_row = excel_output.add_sheet("dummy")
-    write_excel_row.side_effect = NewException
+    def setUp(self):
+        self.patcher = mock.patch("create_downloads.CsvOutput")
+        CsvOutput = self.patcher.start()
 
-    # Mock the csv writer (so we can collect counts).
-    # We need csv_mock_instance to be object returned from the
-    # CsvOutput() context manager.
-    # (this mocking relies on the fact that inside the `with` statement
-    # in write_excel_csv it sees the same mock instance we used
-    # here (named csv_mock_instance here)).
-    with CsvOutput("foo_file") as csv_mock_instance:
-        squirrel.write_csv_row = csv_mock_instance.write_row
+        # Mock an ExcelOutput instance that raises an Exception when you
+        # try to write row.
+        self.excel_output = mock.Mock()
+        write_excel_row = self.excel_output.add_sheet("dummy")
+        write_excel_row.side_effect = NewException
 
-    def get_many_rows():
-        return [[1, 2, 3]] * n_rows
+        # Mock the csv writer (so we can collect counts).
+        # We need csv_mock_instance to be object returned from the
+        # CsvOutput() context manager.
+        # (this mocking relies on the fact that inside the `with`
+        # statement in write_excel_csv it sees the same mock
+        # instance we used here (named csv_mock_instance here)).
+        with CsvOutput("foo_file") as csv_mock_instance:
+            self.write_csv_row = csv_mock_instance.write_row
 
-    write_excel_csv(excel_output, "foo_sheet", "foo_file",
-        get_many_rows)
+    def tearDown(self):
+        self.patcher.stop()
+
+    def test_always_write_csv_7k(self):
+
+        N_ROWS = 7000
+
+        # As of 2013-11-14 write_excel_csv does not catch exception
+        # from the underlying excel writer. So this test will see
+        # the exception that the mocked write_excel_row raises.
+        def call_it():
+            self.write_many_rows(N_ROWS)
+        assert_raises(NewException, call_it)
+        assert_equal(self.write_csv_row.call_count, N_ROWS)
+
+    def test_always_write_csv_70k(self):
+        """
+        When writing 70000 rows we expect write_excel_csv to
+        notice, and avoid writing to the excel file.
+        """
+
+        N_ROWS = 70000
+
+        write_csv_row = self.write_many_rows(N_ROWS)
+        assert_equal(self.write_csv_row.call_count, N_ROWS)
+
+    def write_many_rows(self, n_rows):
+        """
+        Write *n_rows* using the `write_excel_csv()` function.
+        """
+
+        def get_many_rows():
+            return [[1, 2, 3]] * n_rows
+
+        write_excel_csv(self.excel_output, "foo_sheet", "foo_file",
+            get_many_rows)
 
 
 def test_generate_excel_colspans():
