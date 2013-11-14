@@ -9,7 +9,7 @@ import traceback
 
 from contextlib import contextmanager
 from datetime import datetime
-from itertools import chain, izip, product
+from itertools import chain, izip, product, count
 from tempfile import NamedTemporaryFile
 from os.path import abspath, basename, dirname, join
 
@@ -238,6 +238,9 @@ class ExcelOutput(object):
         if exc_type is not None:
             return
 
+        if self.get_num_sheets() == 0:
+            return
+
         basepath = dirname(self.path)
         with NamedTemporaryFile(dir=basepath, delete=False) as tempfile:
             try:
@@ -248,6 +251,15 @@ class ExcelOutput(object):
             else:
                 os.rename(tempfile.name, self.path)
                 os.chmod(self.path, 0644)
+
+    def get_num_sheets(self):
+        num_sheets = 0
+        for i in count():
+	    try:
+	        self.workbook.get_sheet(i)
+                num_sheets += 1
+	    except IndexError:
+	        return num_sheets
 
     def add_sheet(self, sheet_name):
         sheet = self.workbook.add_sheet(sheet_name)
