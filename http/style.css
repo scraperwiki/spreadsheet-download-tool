@@ -49,7 +49,9 @@
 }
 
 #files a.xls,
-#archives a.xls {
+#archives a.xls,
+#files a.xlsx,
+#archives a.xlsx {
   background-image: url(xls.png);
 }
 

@@ -87,7 +87,7 @@ var generateFileList = function(cb){
     })
   })
   window.files.push({
-    'filename': 'all_tables.xls',
+    'filename': 'all_tables.xlsx',
     'state': 'waiting',
     'created': null,
     'source_type': null,
