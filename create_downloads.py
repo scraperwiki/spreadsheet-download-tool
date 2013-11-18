@@ -360,7 +360,7 @@ def generate_for_box(box_url):
             dump_grids(excel_output, grids)
         else:
             raise DatasetIsEmptyError('Your dataset contains no data')
-            pass # LOLPYTHON
+            pass # This is shown in stack trace
 
 
 def make_table(columns, row_dicts):
