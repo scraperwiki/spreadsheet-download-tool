@@ -21,5 +21,8 @@ setup(
         'xlwt>=0.7.5',
         'autoversion>=1.0.0',
         'unicodecsv>=0.9.4',
+        'lxml==3.2.4',
+        'scraperwiki==0.3.7',
+        'Jinja2==2.7.1', # Including pyexcelerates deps because we include it
     ],
 )

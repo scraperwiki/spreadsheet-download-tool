@@ -277,6 +277,48 @@ class ExcelOutput(object):
         return write_row
 
 
+import pyexcelerate
+import pyexcelerate.Range
+def excel_coord(row, col):
+    return pyexcelerate.Range.Range.coordinate_to_string((row, col))
+    
+
+class ExceleratorOutput(ExcelOutput):
+
+    def __init__(self, path):
+        self.path = path
+        self.workbook = pyexcelerate.Workbook()
+
+    def add_sheet(self, sheet_name):
+        sheet = self.workbook.new_sheet(sheet_name)
+
+        class State:
+            current_row = 1 # Note: PyExcelerate counts from 1.
+
+        def write_row(row):
+
+            j = State.current_row
+            i = 1 # Note: PyExcelerate counts from 1.
+
+            for cell in row:
+                (rowspan, colspan), content = get_cell_span_content(cell)
+                sheet.set_cell_value(j, i, content)
+
+                if not (colspan == rowspan == 1):
+                    # It's a span.
+
+                    top_left = excel_coord(j, i)
+                    bottom_right = excel_coord(j+rowspan-1, i+colspan-1)
+
+                    sheet.range(top_left, bottom_right).merge()
+
+                i += colspan
+
+            State.current_row += 1
+
+        return write_row
+
+
 def main():
     log('# {} creating downloads:'.format(datetime.now().isoformat()))
     box_url = get_box_url()
@@ -303,8 +345,10 @@ def update_state(filename, source_type, source_id):
 
 def generate_for_box(box_url):
 
-    state = update_state('all_tables.xls', None, None)
-    excel_output = ExcelOutput(join(DESTINATION, "all_tables.xls"))
+    excel_filename = "all_tables.xlsx"
+    state = update_state(excel_filename, None, None)
+    # excel_output = ExcelOutput(join(DESTINATION, "all_tables.xls"))
+    excel_output = ExceleratorOutput(join(DESTINATION, excel_filename))
 
     with state, excel_output:
         tables = get_dataset_tables(box_url)
