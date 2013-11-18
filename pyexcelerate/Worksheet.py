@@ -116,10 +116,10 @@ class Worksheet(object):
 			return self._parent
 
 	def __get_cell_data(self, cell, x, y, style):
-        # Temporary fix
-        if cell is None:
-            cell = ''
-        # End Temporary fix
+		# Temporary fix
+		if cell is None:
+			cell = ''
+		# End Temporary fix
 
 		if cell not in self._cell_cache:
 			type = DataTypes.get_type(cell)
