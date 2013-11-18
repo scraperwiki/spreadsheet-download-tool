@@ -299,7 +299,6 @@ class ExceleratorOutput(ExcelOutput):
 
             j = State.current_row
             i = 1 # Note: PyExcelerate counts from 1.
-            
 
             for cell in row:
                 (rowspan, colspan), content = get_cell_span_content(cell)
@@ -312,17 +311,6 @@ class ExceleratorOutput(ExcelOutput):
                     bottom_right = excel_coord(j+rowspan-1, i+colspan-1)
 
                     sheet.range(top_left, bottom_right).merge()
-
-
-                #     # sheet.write(j, i, content)
-                # else:
-                #     sheet.set_cell_value(j+1, i+1, content)
-                #     # raise NotImplementedError
-                #     # sheet.range().merge()
-                #     # sheet.write_merge(j, j + rowspan - 1,
-                #     #                   i, i + colspan - 1,
-                #     #                   content)
-                #     pass
 
                 i += colspan
 
