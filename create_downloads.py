@@ -226,6 +226,7 @@ class CsvOutput(object):
 
 
 class ExcelOutput(object):
+    MAX_ROWS = 65000
 
     def __init__(self, path):
         self.workbook = xlwt.Workbook(encoding="utf-8")
@@ -256,6 +257,13 @@ class ExcelOutput(object):
             current_row = 0
 
         def write_row(row):
+
+            if State.current_row > self.MAX_ROWS:
+                if not getattr(self, "encountered_error", False):
+                    log("{0} Tried to write more than {1} rows, ceasing output"
+                        .format(type(self).__name__, self.MAX_ROWS))
+                self.encountered_error = True
+                return
 
             j = State.current_row
             i = 0
@@ -359,7 +367,6 @@ def update_state(filename, source_type, source_id, writer=None):
 def generate_for_box(box_url):
 
     excel_filename = "all_tables.xlsx"
-    state = update_state(excel_filename, None, None)
     # excel_output = ExcelOutput(join(DESTINATION, "all_tables.xls"))
     excel_output = ExceleratorOutput(join(DESTINATION, excel_filename))
     state = update_state(excel_filename, None, None, writer=excel_output)

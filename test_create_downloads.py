@@ -222,8 +222,8 @@ def test_mem_generate_excel():
 
     mem_before = getmaxrss_mb()
     # outputter = ExcelOutput
-    # outputter = ExceleratorOutput
-    outputter = XlsxWriterOutput
+    outputter = ExceleratorOutput
+    # outputter = XlsxWriterOutput
 
     with outputter("test/test_mem_generate_excel.xlsx") as xls:
         n = 0
