@@ -378,11 +378,6 @@ def update_state(filename, source_type, source_id, writer=None):
         if not getattr(writer, "encountered_error", False):
             state = "generated"
     finally:
-        if writer and writer.encountered_error:
-            if 0: scraperwiki.sql.save(
-                unique_keys=['message'],
-                data={'message': writer.encountered_error},
-                table_name='_error')
         save_state(filename, source_type, source_id, state)
 
 def generate_for_box(box_url):
