@@ -20,7 +20,7 @@ def main():
     tables = get_dataset_tables(box_url)
     grids = get_dataset_grids(box_url)
 
-    save_state('all_tables.xls', None, None, 'generating')
+    save_state('all_tables.xlsx', None, None, 'generating')
 
     for table in tables:
         save_state('{}.csv'.format(table['name']), 'table', table['name'], 'waiting')

@@ -379,7 +379,7 @@ def update_state(filename, source_type, source_id, writer=None):
             state = "generated"
     finally:
         if writer and writer.encountered_error:
-            scraperwiki.sql.save(
+            if 0: scraperwiki.sql.save(
                 unique_keys=['message'],
                 data={'message': writer.encountered_error},
                 table_name='_error')

@@ -98,7 +98,7 @@ var generateFileList = function(cb){
 
 var updateFileList = function(cb){
   console.log('updateFileList() called')
-  scraperwiki.tool.sql('SELECT filename, state, created FROM _state_files').done(function(files){
+  scraperwiki.tool.sql('SELECT * FROM _state_files').done(function(files){
     console.log('updateFileList() got files')
     $.each(files, function(i, file){
       fileRecordToUpdate = _.findWhere(window.files, {'filename':file.filename})
