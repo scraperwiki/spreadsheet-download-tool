@@ -231,7 +231,8 @@ class ExcelOutput(object):
     def __init__(self, path):
         self.workbook = xlwt.Workbook(encoding="utf-8")
         self.path = path
-        self.encountered_error = False
+        # Either None or a string that is the error to report.
+        self.encountered_error = None
 
     def __enter__(self):
         return self
@@ -263,10 +264,14 @@ class ExcelOutput(object):
         def write_row(row):
 
             if State.current_row > self.MAX_ROWS:
-                if not getattr(self, "encountered_error", False):
-                    log("{0} Tried to write more than {1} rows, ceasing output"
-                        .format(type(self).__name__, self.MAX_ROWS))
-                self.encountered_error = True
+                if not self.encountered_error:
+                    error_message = (
+                      "Tried to write more than {0} rows, ceasing output"
+                      .format(self.MAX_ROWS)
+                    )
+                    log("{0} {1}"
+                        .format(type(self).__name__, error_message))
+                    self.encountered_error = error_message
                 return
 
             j = State.current_row
@@ -301,6 +306,7 @@ class ExceleratorOutput(ExcelOutput):
     def __init__(self, path):
         self.path = path
         self.workbook = pyexcelerate.Workbook()
+        self.encountered_error = None
 
     def add_sheet(self, sheet_name):
         sheet = self.workbook.new_sheet(sheet_name)
@@ -311,10 +317,14 @@ class ExceleratorOutput(ExcelOutput):
         def write_row(row):
 
             if State.current_row > self.MAX_ROWS:
-                if not getattr(self, "encountered_error", False):
-                    log("{0} Tried to write more than {1} rows, ceasing output"
-                        .format(type(self).__name__, self.MAX_ROWS))
-                self.encountered_error = True
+                if not self.encountered_error:
+                    error_message = (
+                      "Tried to write more than {0} rows, ceasing output"
+                      .format(self.MAX_ROWS)
+                    )
+                    log("{0} {1}"
+                        .format(type(self).__name__, error_message))
+                    self.encountered_error = error_message
                 return
 
             j = State.current_row
@@ -362,10 +372,17 @@ def update_state(filename, source_type, source_id, writer=None):
     except:
         raise
     else:
-        # If writer has a .encountered_error == True, then don't report success.
+        # If writer has a .encountered_error == "some error", then
+        # don't report success.
+        # getattr() is necessary because `writer` is sometimes None.
         if not getattr(writer, "encountered_error", False):
             state = "generated"
     finally:
+        if writer and writer.encountered_error:
+            scraperwiki.sql.save(
+                unique_keys=['message'],
+                data={'message': writer.encountered_error},
+                table_name='_error')
         save_state(filename, source_type, source_id, state)
 
 def generate_for_box(box_url):
