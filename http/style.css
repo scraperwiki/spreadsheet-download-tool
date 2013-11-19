@@ -48,6 +48,11 @@
   background-image: url(csv.png);
 }
 
+#files a.failed,
+#archives a.failed {
+  background-image: url(exclamation-red.png);
+}
+
 #files a.xls,
 #archives a.xls,
 #files a.xlsx,
