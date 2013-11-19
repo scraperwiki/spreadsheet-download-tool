@@ -1,3 +1,5 @@
 http/*.csv
 http/*.xls
 tool-update.log
+*.pyc
+scraperwiki.sqlite

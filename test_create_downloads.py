@@ -172,11 +172,13 @@ def kick_maxrss():
     mem_before = getmaxrss_mb()
     keep_alive = []
     # Algorithm: whilst delta doesn't go up, more memory needs to be allocated.
+    MiB = (1024 * 1024)
     while delta < 1:
         delta = getmaxrss_mb() - mem_before
         # Take another 1MB of memory..
-        keep_alive.append(" " * (1024 * 1024))
-        print "Allocated 1MB.."
+        keep_alive.append(" " * MiB)
+
+    print "Allocated {0}MiB..".format(len(keep_alive))
     return keep_alive
 
 
@@ -206,3 +208,31 @@ def test_mem_parse_giant_table():
 
     # Check that we didn't use more than 1MB to parse the table.
     assert_less_equal(used, 1)
+
+
+def test_mem_generate_excel():
+
+    alive = kick_maxrss()
+
+    # Note: this has been tested with 1M row, and it works but it's slow.
+    # 100krow makes the point.
+    N_ROWS = 80000
+
+    table = make_table(N_ROWS, 4)
+
+    mem_before = getmaxrss_mb()
+    # outputter = ExcelOutput
+    outputter = ExceleratorOutput
+    # outputter = XlsxWriterOutput
+
+    with outputter("test/test_mem_generate_excel.xlsx") as xls:
+        n = 0
+        write_row = xls.add_sheet("hi")
+
+        with t("write rows"):
+            for row in find_trs(BytesIO(table)):
+                write_row([e.text for e in row])
+
+    used = getmaxrss_mb() - mem_before
+
+    print "Used MB for 65krow:", used

@@ -98,7 +98,7 @@ var generateFileList = function(cb){
 
 var updateFileList = function(cb){
   console.log('updateFileList() called')
-  scraperwiki.tool.sql('SELECT filename, state, created FROM _state_files').done(function(files){
+  scraperwiki.tool.sql('SELECT * FROM _state_files').done(function(files){
     console.log('updateFileList() got files')
     $.each(files, function(i, file){
       fileRecordToUpdate = _.findWhere(window.files, {'filename':file.filename})
@@ -139,15 +139,20 @@ var renderListItem = function(file){
   var $a = $('<a>')
   $a.append('<span class="filename">' + file.filename + '</span>')
   if(file.state == 'generated'){
-    $a.addClass(file.filename.split('.').pop()) // gets everything after the last dot (ie: extension)
+    // Gets everything after the last dot (that is, extension).
+    var extension = file.filename.split('.').pop()
+    $a.addClass(extension)
     if(typeof file.created === 'string'){
       $a.attr('data-timestamp', file.created)
       $a.append('<span class="state">' + moment(file.created).fromNow() + '</span>')
     }
     $a.attr('href', scraperwiki.readSettings().source.url + '/http/' + file.filename)
-  } else if(file.state == 'generating'){
+  } else if(file.state == 'generating') {
     $a.addClass('generating')
     $a.append('<span class="state">Generating</span>')
+  } else if(file.state == 'failed') {
+    $a.addClass('failed')
+    $a.append('<span class="state">Failed</span>')
   } else {
     $a.addClass('waiting')
     $a.append('<span class="state">Waiting</span>')

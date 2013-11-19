@@ -226,16 +226,22 @@ class CsvOutput(object):
 
 
 class ExcelOutput(object):
+    MAX_ROWS = 65000
 
     def __init__(self, path):
         self.workbook = xlwt.Workbook(encoding="utf-8")
         self.path = path
+        # Either None or a string that is the error to report.
+        self.encountered_error = None
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:
+            return
+
+        if self.encountered_error:
             return
 
         basepath = dirname(self.path)
@@ -256,6 +262,17 @@ class ExcelOutput(object):
             current_row = 0
 
         def write_row(row):
+
+            if State.current_row > self.MAX_ROWS:
+                if not self.encountered_error:
+                    error_message = (
+                      "Tried to write more than {0} rows, ceasing output"
+                      .format(self.MAX_ROWS)
+                    )
+                    log("{0} {1}"
+                        .format(type(self).__name__, error_message))
+                    self.encountered_error = error_message
+                return
 
             j = State.current_row
             i = 0
@@ -284,10 +301,12 @@ def excel_coord(row, col):
     
 
 class ExceleratorOutput(ExcelOutput):
+    MAX_ROWS = 100000
 
     def __init__(self, path):
         self.path = path
         self.workbook = pyexcelerate.Workbook()
+        self.encountered_error = None
 
     def add_sheet(self, sheet_name):
         sheet = self.workbook.new_sheet(sheet_name)
@@ -296,6 +315,17 @@ class ExceleratorOutput(ExcelOutput):
             current_row = 1 # Note: PyExcelerate counts from 1.
 
         def write_row(row):
+
+            if State.current_row > self.MAX_ROWS:
+                if not self.encountered_error:
+                    error_message = (
+                      "Tried to write more than {0} rows, ceasing output"
+                      .format(self.MAX_ROWS)
+                    )
+                    log("{0} {1}"
+                        .format(type(self).__name__, error_message))
+                    self.encountered_error = error_message
+                return
 
             j = State.current_row
             i = 1 # Note: PyExcelerate counts from 1.
@@ -331,24 +361,31 @@ def paged_rows_generator(box_url, tables):
 
 
 @contextmanager
-def update_state(filename, source_type, source_id):
+def update_state(filename, source_type, source_id, writer=None):
     filename = basename(filename)
 
     save_state(filename, source_type, source_id, "generating")
+
+    state = "failed"
     try:
         yield
     except:
-        save_state(filename, source_type, source_id, "failed")
         raise
     else:
-        save_state(filename, source_type, source_id, "generated")
+        # If writer has a .encountered_error == "some error", then
+        # don't report success.
+        # getattr() is necessary because `writer` is sometimes None.
+        if not getattr(writer, "encountered_error", False):
+            state = "generated"
+    finally:
+        save_state(filename, source_type, source_id, state)
 
 def generate_for_box(box_url):
 
     excel_filename = "all_tables.xlsx"
-    state = update_state(excel_filename, None, None)
     # excel_output = ExcelOutput(join(DESTINATION, "all_tables.xls"))
     excel_output = ExceleratorOutput(join(DESTINATION, excel_filename))
+    state = update_state(excel_filename, None, None, writer=excel_output)
 
     with state, excel_output:
         tables = get_dataset_tables(box_url)
