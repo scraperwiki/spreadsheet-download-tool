@@ -231,12 +231,16 @@ class ExcelOutput(object):
     def __init__(self, path):
         self.workbook = xlwt.Workbook(encoding="utf-8")
         self.path = path
+        self.encountered_error = False
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:
+            return
+
+        if self.encountered_error:
             return
 
         basepath = dirname(self.path)
