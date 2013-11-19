@@ -284,6 +284,7 @@ def excel_coord(row, col):
     
 
 class ExceleratorOutput(ExcelOutput):
+    MAX_ROWS = 100000
 
     def __init__(self, path):
         self.path = path
@@ -296,6 +297,13 @@ class ExceleratorOutput(ExcelOutput):
             current_row = 1 # Note: PyExcelerate counts from 1.
 
         def write_row(row):
+
+            if State.current_row > self.MAX_ROWS:
+                if not getattr(self, "encountered_error", False):
+                    log("{0} Tried to write more than {1} rows, ceasing output"
+                        .format(type(self).__name__, self.MAX_ROWS))
+                self.encountered_error = True
+                return
 
             j = State.current_row
             i = 1 # Note: PyExcelerate counts from 1.
@@ -331,17 +339,22 @@ def paged_rows_generator(box_url, tables):
 
 
 @contextmanager
-def update_state(filename, source_type, source_id):
+def update_state(filename, source_type, source_id, writer=None):
     filename = basename(filename)
 
     save_state(filename, source_type, source_id, "generating")
+
+    state = "failed"
     try:
         yield
     except:
-        save_state(filename, source_type, source_id, "failed")
         raise
     else:
-        save_state(filename, source_type, source_id, "generated")
+        # If writer has a .encountered_error == True, then don't report success.
+        if not getattr(writer, "encountered_error", False):
+            state = "generated"
+    finally:
+        save_state(filename, source_type, source_id, state)
 
 def generate_for_box(box_url):
 
@@ -349,6 +362,7 @@ def generate_for_box(box_url):
     state = update_state(excel_filename, None, None)
     # excel_output = ExcelOutput(join(DESTINATION, "all_tables.xls"))
     excel_output = ExceleratorOutput(join(DESTINATION, excel_filename))
+    state = update_state(excel_filename, None, None, writer=excel_output)
 
     with state, excel_output:
         tables = get_dataset_tables(box_url)
