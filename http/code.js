@@ -139,7 +139,9 @@ var renderListItem = function(file){
   var $a = $('<a>')
   $a.append('<span class="filename">' + file.filename + '</span>')
   if(file.state == 'generated'){
-    $a.addClass(file.filename.split('.').pop()) // gets everything after the last dot (ie: extension)
+    // Gets everything after the last dot (that is, extension).
+    var extension = file.filename.split('.').pop()
+    $a.addClass(extension)
     if(typeof file.created === 'string'){
       $a.attr('data-timestamp', file.created)
       $a.append('<span class="state">' + moment(file.created).fromNow() + '</span>')
