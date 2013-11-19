@@ -147,9 +147,12 @@ var renderListItem = function(file){
       $a.append('<span class="state">' + moment(file.created).fromNow() + '</span>')
     }
     $a.attr('href', scraperwiki.readSettings().source.url + '/http/' + file.filename)
-  } else if(file.state == 'generating'){
+  } else if(file.state == 'generating') {
     $a.addClass('generating')
     $a.append('<span class="state">Generating</span>')
+  } else if(file.state == 'failed') {
+    $a.addClass('failed')
+    $a.append('<span class="state">Failed</span>')
   } else {
     $a.addClass('waiting')
     $a.append('<span class="state">Waiting</span>')
