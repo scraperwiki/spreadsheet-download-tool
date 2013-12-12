@@ -147,6 +147,7 @@ var renderListItem = function(file){
       $a.append('<span class="state">' + moment(file.created).fromNow() + '</span>')
     }
     $a.attr('href', scraperwiki.readSettings().source.url + '/http/' + file.filename)
+    $a.attr('target', '_blank')
   } else if(file.state == 'generating') {
     $a.addClass('generating')
     $a.append('<span class="state">Generating</span>')
