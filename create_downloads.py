@@ -89,52 +89,6 @@ def get_cell_span_content(cell):
     return (rowspan, colspan), content
 
 
-def make_plain_table(table):
-    """
-    Given a table just containing strings, return it.
-
-    If the table contains HTML td colspan elements, fill all spanned cells with
-    its content to make the resulting table rectangular.
-
-    NOTE(pwaller): This code has been superceded by CsvOutput.write_row.
-                   It's still here for testing purposes for now but can be
-                   deleted one day.
-    """
-    if all(isinstance(cell, basestring) for row in table for cell in row):
-        # No transformation needed
-        return table
-
-    # If we get here, table contains lxml.html.HtmlElement which may be
-    # colspanned. Undo the colspanning.
-
-    result_table = []
-
-    def insert(j, i, content):
-        n_missing_rows = j - len(result_table) + 1
-        if n_missing_rows > 0:
-            result_table.extend(list() for _ in xrange(n_missing_rows))
-
-        row = result_table[j]
-        n_missing_cells = i - len(row) + 1
-        if n_missing_cells > 0:
-            row.extend("" for _ in xrange(n_missing_cells))
-
-        row[i] = content
-
-    for j, row in enumerate(table):
-        for i, cell in enumerate(row):
-            (rowspan, colspan), content = get_cell_span_content(cell)
-
-            if colspan == rowspan == 1:
-                insert(j, i, content)
-                continue
-
-            for y, x in product(xrange(rowspan), xrange(colspan)):
-                insert(j + y, i + x, content)
-
-    return result_table
-
-
 class CsvOutput(object):
 
     def __init__(self, path):
@@ -298,7 +252,7 @@ import pyexcelerate
 import pyexcelerate.Range
 def excel_coord(row, col):
     return pyexcelerate.Range.Range.coordinate_to_string((row, col))
-    
+
 
 class ExceleratorOutput(ExcelOutput):
     MAX_ROWS = 100000
