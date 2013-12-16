@@ -8,7 +8,7 @@ from nose.tools import assert_equal, assert_less_equal
 from nose.plugins.skip import SkipTest
 
 from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
-                              make_plain_table, dump_grids, find_trs)
+                              dump_grids, find_trs)
 
 
 def test_generate_excel_colspans():
