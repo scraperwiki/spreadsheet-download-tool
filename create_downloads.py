@@ -421,7 +421,7 @@ def get_dataset_tables(box_url):
 def get_dataset_grids(box_url):
     grids = []
     try:
-        results = query_sql_database(box_url, 'SELECT * FROM _grids')
+        results = query_sql_database(box_url, 'SELECT * FROM _grids ORDER BY number')
         for result in results:
             grids.append({
                 'id': result['checksum'],
