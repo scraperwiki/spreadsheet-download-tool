@@ -44,7 +44,7 @@ var getDatasetTablesAndGrids = function(cb){
       if('_grids' in meta.table){
         // add grids to window.tablesAndGrids
         console.log('getDatasetTablesAndGrids() ... found _grids table')
-        scraperwiki.dataset.sql('SELECT * FROM _grids').fail(function(jqXHR, textStatus, errorThrown){
+        scraperwiki.dataset.sql('SELECT * FROM _grids ORDER BY number').fail(function(jqXHR, textStatus, errorThrown){
           reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.dataset.sql()')
           cb(window.tablesAndGrids)
         }).done(function(grids){
