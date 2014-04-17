@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Avoid running on cobalt-f
+if hostname | grep 'f$' >/dev/null
+then
+    exit 0
+fi
+
 date > ~/hook_update.log
 
 URL=$(cat ~/dataset_url.txt)
