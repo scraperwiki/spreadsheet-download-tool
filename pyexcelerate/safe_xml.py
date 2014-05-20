@@ -23,8 +23,7 @@ def replace_invalid_xml_chars(s):
        Therefore, we replace these forbidden characters with U+FFFD.
        We also call escape, to convert & < > to &amp; &lt; &gt;
        https://github.com/scraperwiki/spreadsheet-download-tool/issues/67"""
-    assert isinstance(s, unicode), "replace_invalid_xml_characters: "
-    "expected Unicode, got {}".format(type(s))
+    s = unicode(s)  # this may fail.
     return escape(s.translate(TRANS_DICT))
 
 
