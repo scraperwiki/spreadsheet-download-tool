@@ -8,7 +8,7 @@ from nose.tools import assert_equal, assert_less_equal
 from nose.plugins.skip import SkipTest
 
 from create_downloads import (ExcelOutput, CsvOutput, grid_rows_from_string,
-                              dump_grids, find_trs)
+                              dump_grids, find_trs, ExceleratorOutput)
 
 
 def test_generate_excel_colspans():
@@ -229,10 +229,11 @@ def test_mem_generate_excel():
         n = 0
         write_row = xls.add_sheet("hi")
 
-        with t("write rows"):
-            for row in find_trs(BytesIO(table)):
-                write_row([e.text for e in row])
+        for row in find_trs(BytesIO(table)):
+            write_row([e.text for e in row])
 
     used = getmaxrss_mb() - mem_before
 
     print "Used MB for 65krow:", used
+    # measured at <42 MB
+    assert used < 50, "Excessive memory usage"
