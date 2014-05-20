@@ -1,0 +1,6 @@
+This version of PyExcelerate has been patched.
+
+Specifically, commit 74f38f7c ensures control characters (which break Excel)
+aren't passed through.
+
+This modifies Worksheet.py - search for xml_chars - and adds safe_xml.py
