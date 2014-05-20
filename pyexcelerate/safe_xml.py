@@ -15,11 +15,11 @@ TRANS_DICT = _replacement_dictionary()
 
 def replace_invalid_xml_chars(s):
     """http://www.w3.org/TR/REC-xml/#charsets implies that characters < 0x20
-       and not 0x09 0x0A 0x0D [tab, CR, LF] may not be part of XML 1.0 spec.
+       may not be part of XML 1.0 spec (except that 0x09 0x0A 0x0D [tab, CR, LF] are allowed).
        It's slightly ambiguous.
-       Excel definately hates them in XLSX documents, and replaces them with
-       _x00nn_, escaping literal versions of that by including _x005F_ - ie.
-       an encoded underscore. LibreOffice doesn't understand these.
+       Excel definitely hates them in XLSX documents, and replaces them with
+       _x00nn_; escaping literal versions of that by including _x005F_
+       (an encoded underscore). LibreOffice doesn't understand these.
        Therefore, we replace these forbidden characters with U+FFFD.
        We also call escape, to convert & < > to &amp; &lt; &gt;
        https://github.com/scraperwiki/spreadsheet-download-tool/issues/67"""
