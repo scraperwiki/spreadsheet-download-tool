@@ -67,16 +67,38 @@
   font-weight: 200;
 }
 
-#refresh {
+#refresh #refresh_icon {
   display: block;
   float: right;
   width: 48px;
   height: 48px;
   background: transparent url(refresh.gif) 50% 50% no-repeat;
   cursor: pointer;
+  margin-top: -7px;
 }
 
-.refreshing {
+#refresh #refresh_text {
+  display: block;
+  float: right;
+  clear: right;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: center;
+  margin-top: -14px;
+}
+
+#refresh {
+  color: #888;
+}
+
+#refresh:hover {
+  text-decoration: none;
+  color: #000;
+}
+
+.refreshing #refresh_icon {
   -moz-animation-duration: 1s;
   -webkit-animation-duration: 1s;
   -moz-animation-name: spin;
