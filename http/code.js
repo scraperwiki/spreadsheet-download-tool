@@ -68,15 +68,6 @@ var generateFileList = function(cb){
   // information from the _state_files SQL table, this function
   // contructs a list of files generated / to be generated
   console.log('generateFileList() from', window.tablesAndGrids.tables.length, 'tables and', window.tablesAndGrids.grids.length, 'grids')
-  // $.each(window.tablesAndGrids.tables, function(i, table){
-  //   window.files.push({
-  //     'filename': makeFilename(table.name) + '.csv',
-  //     'state': 'waiting',
-  //     'created': null,
-  //     'source_type': 'table',
-  //     'source_id': table.name
-  //   })
-  // })
   $.each(window.tablesAndGrids.grids, function(i, grid){
     window.files.push({
       'filename': makeFilename(grid.name) + '.csv',
@@ -296,8 +287,6 @@ $(function(){
             name + '.csv</span><span class="state">live</span></a></li>')
       $('#files').append(li)
     })
-  }).fail(function(jqXHR){
-    // TODO(pwaller): This.
   })
 
   $('#refresh').on('click', refresh_click)
