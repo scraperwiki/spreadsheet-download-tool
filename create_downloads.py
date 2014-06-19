@@ -379,16 +379,20 @@ def write_excel_csv(excel_output, sheet_name, filename, rows):
             write_excel_row(row)
 
 
+def write_excel(excel_output, sheet_name, rows):
+    write_excel_row = excel_output.add_sheet(sheet_name)
+
+    for row in rows:
+        # Loop structure is intentionally this way because `grid_rows``
+        # is a generator, and this is desirable for low memory usage.
+        write_excel_row(row)
+
+
 def dump_tables(excel_output, tables, paged_rows):
 
     for table, paged_rows in izip(tables, paged_rows):
         rows = make_table(table['columns'], chain.from_iterable(paged_rows))
-
-        filename = '{}.csv'.format(make_filename(table['name']))
-        filename = join(DESTINATION, filename)
-
-        with update_state(filename, 'table', table['name']):
-            write_excel_csv(excel_output, table['name'], filename, rows)
+        write_excel(excel_output, table['name'], rows)
 
 
 def dump_grids(excel_output, grids):
