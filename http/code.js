@@ -164,13 +164,23 @@ $(function(){
       $('#archives').append(li)
     })
 
+    var grids = []
+
     $.each(metadata.grid, function(thisGrid, a) {
       if (!/^_/.test(thisGrid)) {
+        grids.push(a)
+      }
+    })
+
+    grids.sort(function(a, b) {
+      return a.number - b.number
+    })
+
+    $.each(grids, function(thisGrid, a) {
           var name = 'page_' + String(a.number)
           li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '"><span class="filename">'+
                 name + '.xlsx</span><span class="state">live</span></a></li>')
           $('#archives').append(li)
-      }
     })
   })
 
