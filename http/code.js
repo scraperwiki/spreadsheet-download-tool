@@ -162,8 +162,8 @@ $(function(){
       $('#files').append(li)
 
       var xlsxUrl = datasetUrl + "/cgi-bin/xlsx/"
-      li = ('<li><a class="csv" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
-            name + '.csv</span><span class="state">live</span></a></li>')
+      li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
+            name + '.xlsx</span><span class="state">live</span></a></li>')
       $('#archives').append(li)
     })
   })
