@@ -148,6 +148,8 @@ $(function(){
   })
 
   datasetUrl = scraperwiki.readSettings().target.url
+  var xlsxUrl = datasetUrl + "/cgi-bin/xlsx/"
+  var csvUrl = datasetUrl + "/cgi-bin/csv/"
 
   scraperwiki.sql.meta().done(function(metadata){
     $('#feeds').show()
@@ -157,12 +159,18 @@ $(function(){
       if (/^_/.test(name)) {
         return
       }
-      var csvUrl = datasetUrl + "/cgi-bin/csv/"
+
       li = ('<li><a class="csv" href="' + csvUrl + name + '.csv" target="_blank"><span class="filename">'+
             name + '.csv</span><span class="state">live</span></a></li>')
       $('#files').append(li)
 
-      var xlsxUrl = datasetUrl + "/cgi-bin/xlsx/"
+      li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
+            name + '.xlsx</span><span class="state">live</span></a></li>')
+      $('#archives').append(li)
+    })
+
+    $.each(metadata.grid, function(thisGrid) {
+      var name = 'page_' + String(thisGrid.number)
       li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
             name + '.xlsx</span><span class="state">live</span></a></li>')
       $('#archives').append(li)
