@@ -155,11 +155,11 @@ $(function(){
         return
       }
 
-      li = ('<li><a class="csv" href="' + csvUrl + name + '.csv" target="_blank"><span class="filename">'+
+      li = ('<li><a class="csv" href="' + csvUrl + name + '.csv"><span class="filename">'+
             name + '.csv</span><span class="state">live</span></a></li>')
       $('#files').append(li)
 
-      li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
+      li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '"><span class="filename">'+
             name + '.xlsx</span><span class="state">live</span></a></li>')
       $('#archives').append(li)
     })
@@ -167,7 +167,7 @@ $(function(){
     $.each(metadata.grid, function(thisGrid, a) {
       if (!/^_/.test(thisGrid)) {
           var name = 'page_' + String(a.number)
-          li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
+          li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '"><span class="filename">'+
                 name + '.xlsx</span><span class="state">live</span></a></li>')
           $('#archives').append(li)
       }
@@ -175,7 +175,7 @@ $(function(){
   })
 
   var xlsxUrl = datasetUrl + "/cgi-bin/xlsx/"
-  li = ('<li><a class="xlsx" href="' + xlsxUrl + '" target="_blank"><span class="filename">'+
+  li = ('<li><a class="xlsx" href="' + xlsxUrl + '"><span class="filename">'+
         'all_tables.xlsx</span><span class="state">live</span></a></li>')
   $('#archives').append(li)
 
