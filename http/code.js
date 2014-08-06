@@ -139,10 +139,11 @@ $(function(){
     if(window.tablesAndGrids.tables.length + window.tablesAndGrids.grids.length == 0){
       showEmptyDatasetMessage()
     } else {
-      generateFileList(function(){
-        renderFiles()
-        setTimer()
-      })
+      var xlsxUrl = datasetUrl + "/cgi-bin/xlsx/"
+      li = ('<li><a class="xlsx" href="' + xlsxUrl + '" target="_blank"><span class="filename">'+
+            'all_tables.xlsx</span><span class="state">live</span></a></li>')
+      $('#archives').append(li)
+
     }
   })
 
