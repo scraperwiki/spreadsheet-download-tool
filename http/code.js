@@ -180,5 +180,4 @@ $(function(){
   $('#archives').append(li)
 
 
-  $('#refresh').on('click', refresh_click)
 })
