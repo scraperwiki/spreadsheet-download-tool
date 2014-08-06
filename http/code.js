@@ -169,11 +169,13 @@ $(function(){
       $('#archives').append(li)
     })
 
-    $.each(metadata.grid, function(thisGrid) {
-      var name = 'page_' + String(thisGrid.number)
-      li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
-            name + '.xlsx</span><span class="state">live</span></a></li>')
-      $('#archives').append(li)
+    $.each(metadata.grid, function(thisGrid, a) {
+      if (!/^_/.test(thisGrid)) {
+          var name = 'page_' + String(a.number)
+          li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '" target="_blank"><span class="filename">'+
+                name + '.xlsx</span><span class="state">live</span></a></li>')
+          $('#archives').append(li)
+      }
     })
   })
 
