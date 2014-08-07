@@ -113,60 +113,6 @@ var updateFileList = function(cb){
   })
 }
 
-var renderListItem = function(file){
-  // `file.source_id` should be a unique id for the table/grid
-  // `file.source_type` should be either "table", "grid", or null
-  // `file.filename` should be a filename (either generated, or prospective)
-  // `file.state` should be either "generated", "generating" or "waiting"
-  // `file.created` should (optionally) be an ISO-8601 creation date for the file
-  var $li = $('<li>')
-  if(file.source_id == 'all_tables'){
-    var $ul = $('#archives')
-  } else {
-    var $ul = $('#files')
-  }
-  $li.attr('data-source-id', file.source_id)
-  $li.attr('data-source-type', file.source_type)
-  var $a = $('<a>')
-  $a.append('<span class="filename">' + file.filename + '</span>')
-  if(file.state == 'generated'){
-    // Gets everything after the last dot (that is, extension).
-    var extension = file.filename.split('.').pop()
-    $a.addClass(extension)
-    if(typeof file.created === 'string'){
-      $a.attr('data-timestamp', file.created)
-      $a.append('<span class="state">' + moment(file.created).fromNow() + '</span>')
-    }
-    $a.attr('href', scraperwiki.readSettings().source.url + '/http/' + file.filename)
-    $a.attr('target', '_blank')
-  } else if(file.state == 'generating') {
-    $a.addClass('generating')
-    $a.append('<span class="state">Generating</span>')
-  } else if(file.state == 'failed') {
-    $a.addClass('failed')
-    $a.append('<span class="state">Failed</span>')
-  } else {
-    $a.addClass('waiting')
-    $a.append('<span class="state">Waiting</span>')
-  }
-  $li.append($a)
-  if($('li[data-source-id="' + file.source_id + '"]', $ul).length){
-    // a list item for this file already exists, so replace it
-    $('li[data-source-id="' + file.source_id + '"]', $ul).replaceWith($li)
-  } else {
-    // this is a new file, so append it to the list
-    $ul.append($li)
-  }
-}
-
-var renderFiles = function(){
-  console.log('renderFiles()')
-  $.each(window.files, function(i, file){
-    renderListItem(file)
-  })
-  // $('p.controls').show()
-}
-
 var makeFilename = function(naughtyString){
   return naughtyString.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9-_.]+/g, '')
 }
@@ -177,78 +123,6 @@ var saveDatasetUrl = function(cb){
   if(typeof cb != 'undefined'){
     cb()
   }
-}
-
-var regenerate = function(){
-  console.log('regenerate()')
-  scraperwiki.tool.exec('echo "started"; run-one tool/create_downloads.py &> log.txt &')
-}
-
-var setTimer = function() {
-  console.log('setting window.timer interval for checkStatus()')
-  if(window.timer === null){
-    window.timer = setInterval(checkStatus, 2000)
-  }
-}
-
-var clearTimer = function(){
-  console.log('clearing window.timer interval for checkStatus()')
-  clearInterval(window.timer)
-}
-
-var checkStatus = function(){
-  console.log('checkStatus()')
-  var unfinishedFiles = _.reject(window.files, function(file){
-    return file.state == 'generated'
-  })
-  if(unfinishedFiles.length){
-    // some files are still outstanding, so check
-    // _state_files for updates, and _error for errors
-    scraperwiki.tool.sql('select * from _error', function(errors){
-      // there was an error!! Stop everything and display it
-      var error = errors[0]['message']
-      clearTimer()
-      if(/DatasetIsEmptyError/.test(error)){
-        showEmptyDatasetMessage()
-      } else if(/row index \(65536\) not an int in range\(65536\)/.test(error)){
-        scraperwiki.alert('An error occurred:', 'One of your tables has more than 65536 rows, and could not be written to the Excel file. Contact hello@scraperwiki.com for help.', true)
-      } else {
-        scraperwiki.alert('An unexpected error occurred.', 'Contact hello@scraperwiki.com for help.<pre style="margin-top: 7px">' + error + '</pre>', true)
-      }
-    }, function(jqXHR, textStatus, errorThrown){
-      if(/does not exist/.test(jqXHR.responseText) || /no such table/.test(jqXHR.responseText)){
-        // no errors table, so we assume everything's ok
-        updateFileList(renderFiles)
-      }
-    })
-  } else {
-    // no files outstanding, don't bother checking _state_files database
-    renderFiles()
-  }
-}
-
-var resetStatusDatabase = function(cb){
-  console.log('resetStatusDatabase()')
-  scraperwiki.tool.exec('tool/reset_downloads.py', cb, function(jqXHR, textStatus, errorThrown){
-    reportAjaxError(jqXHR, textStatus, errorThrown, 'scraperwiki.tool.exec("tool/reset_downloads.py")')
-  })
-}
-
-var refresh_click = function(){
-  if($('#refresh').is('.refreshing')){
-    return false
-  }
-  $('#refresh').addClass('refreshing')
-  resetGlobalVariables()
-  resetStatusDatabase(function(){
-    getDatasetTablesAndGrids(function(){
-      generateFileList(function(){
-        $('#refresh').removeClass('refreshing')
-        renderFiles()
-        regenerate()
-      })
-    })
-  })
 }
 
 var showEmptyDatasetMessage = function(){
@@ -264,15 +138,13 @@ $(function(){
   getDatasetTablesAndGrids(function(){
     if(window.tablesAndGrids.tables.length + window.tablesAndGrids.grids.length == 0){
       showEmptyDatasetMessage()
-    } else {
-      generateFileList(function(){
-        renderFiles()
-        setTimer()
-      })
+      return
     }
   })
 
   datasetUrl = scraperwiki.readSettings().target.url
+  var xlsxUrl = datasetUrl + "/cgi-bin/xlsx/"
+  var csvUrl = datasetUrl + "/cgi-bin/csv/"
 
   scraperwiki.sql.meta().done(function(metadata){
     $('#feeds').show()
@@ -282,13 +154,40 @@ $(function(){
       if (/^_/.test(name)) {
         return
       }
-      var csvUrl = datasetUrl + "/cgi-bin/csv/"
-      li = ('<li><a class="csv" href="' + csvUrl + name + '.csv" target="_blank"><span class="filename">'+
+
+      li = ('<li><a class="csv" href="' + csvUrl + name + '.csv"><span class="filename">'+
             name + '.csv</span><span class="state">live</span></a></li>')
       $('#files').append(li)
+
+      li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '"><span class="filename">'+
+            name + '.xlsx</span><span class="state">live</span></a></li>')
+      $('#archives').append(li)
+    })
+
+    var grids = []
+
+    $.each(metadata.grid, function(thisGrid, a) {
+      if (!/^_/.test(thisGrid)) {
+        grids.push(a)
+      }
+    })
+
+    grids.sort(function(a, b) {
+      return a.number - b.number
+    })
+
+    $.each(grids, function(thisGrid, a) {
+          var name = 'page_' + String(a.number)
+          li = ('<li><a class="xlsx" href="' + xlsxUrl + name + '"><span class="filename">'+
+                name + '.xlsx</span><span class="state">live</span></a></li>')
+          $('#archives').append(li)
     })
   })
 
-  $('#refresh').on('click', refresh_click)
+  var xlsxUrl = datasetUrl + "/cgi-bin/xlsx/"
+  li = ('<li><a class="xlsx" href="' + xlsxUrl + '"><span class="filename">'+
+        'all_tables.xlsx</span><span class="state">live</span></a></li>')
+  $('#archives').append(li)
+
 
 })
